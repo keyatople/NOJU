@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NHUJ — No Judge</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --purple: #a855f7; --cyan: #22d3ee; --pink: #f43f5e;
+      --yellow: #fbbf24; --green: #4ade80;
+      --bg: #07070f; --card: #0d0d1f;
+      --border: rgba(168,85,247,0.38); --text: #f0efff; --muted: #6b7280;
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px 20px; overflow-x: hidden;
+    }
+    #config-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: var(--bg); align-items: center; justify-content: center; padding: 32px;
+    }
+    #config-overlay.visible { display: flex; }
+    .config-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px; max-width: 520px; width: 100%; text-align: center;
+    }
+    .config-box h2 { color: var(--text); margin-bottom: 10px; }
+    .config-box p  { color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 12px; }
+    .config-box a  { color: var(--cyan); }
+    .config-steps  { text-align: left; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 16px 20px; margin-top: 16px; }
+    .config-steps li { color: rgba(240,239,255,0.7); font-size: 0.84rem; line-height: 2; margin-left: 16px; }
+
+    /* History overlay */
+    #history-overlay {
+      display: none; position: fixed; inset: 0; z-index: 998;
+      background: rgba(7,7,15,0.93); backdrop-filter: blur(4px);
+      align-items: flex-start; justify-content: center; padding: 24px 20px; overflow-y: auto;
+    }
+    #history-overlay.visible { display: flex; }
+    .history-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px; max-width: 480px; width: 100%; margin: auto;
+    }
+    .history-box h2 { color: var(--text); margin-bottom: 4px; }
+    .history-box .sub { margin-bottom: 18px; }
+    .history-item {
+      padding: 14px; border-radius: 12px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 10px;
+    }
+    .history-date   { font-size: 0.72rem; color: var(--muted); margin-bottom: 3px; }
+    .history-q      { font-weight: 600; color: var(--text); font-size: 0.9rem; }
+    .history-sub    { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .history-winner { font-size: 0.82rem; color: var(--cyan); margin-top: 6px; }
+    .history-empty  { color: var(--muted); text-align: center; padding: 30px 0; font-size: 0.88rem; }
+
+    #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; display: none; }
+    #floaters { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .floater {
+      position: absolute; opacity: 0.15; user-select: none;
+      animation: floatBob ease-in-out infinite alternate;
+    }
+    @keyframes floatBob {
+      from { transform: translateY(0) rotate(-6deg) scale(1); }
+      to   { transform: translateY(-22px) rotate(6deg) scale(1.09); }
+    }
+
+    /* Sound toggle */
+    .sound-btn {
+      position: fixed; top: 14px; right: 14px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%; width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1.1rem; z-index: 50;
+      transition: background 0.15s;
+    }
+    .sound-btn:hover { background: rgba(255,255,255,0.1); }
+
+    /* Screens */
+    .screen {
+      display: none; background: var(--card); border-radius: 24px;
+      padding: 40px 36px; max-width: 560px; width: 100%;
+      border: 1px solid var(--border);
+      box-shadow: 0 0 40px rgba(168,85,247,0.1), 0 0 80px rgba(168,85,247,0.04);
+      position: relative; z-index: 10;
+      animation: popIn 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .screen.active { display: block; }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .back-btn {
+      position: absolute; top: 18px; left: 20px;
+      background: transparent; border: none; color: var(--muted);
+      font-size: 0.87rem; cursor: pointer; padding: 5px 9px; border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .back-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+    .nhuj-logo {
+      font-size: 3rem; font-weight: 900; letter-spacing: -2px; line-height: 1;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--cyan) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      filter: drop-shadow(0 0 20px rgba(168,85,247,0.5)); margin-bottom: 4px;
+    }
+    .nhuj-sub { font-size: 0.76rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 32px; }
+
+    h2 { font-size: 1.3rem; color: var(--text); font-weight: 700; margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: 0.86rem; margin-bottom: 22px; line-height: 1.5; }
+
+    label {
+      display: block; font-weight: 600; color: rgba(240,239,255,0.48);
+      font-size: 0.71rem; text-transform: uppercase; letter-spacing: 0.09em;
+      margin-bottom: 7px; margin-top: 20px;
+    }
+
+    input[type="text"], input[type="password"], input[type="number"], textarea {
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(168,85,247,0.28);
+      border-radius: 10px; font-size: 0.95rem; font-family: inherit; color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input::placeholder, textarea::placeholder { color: var(--muted); }
+    input:focus, textarea:focus {
+      outline: none; border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(168,85,247,0.18);
+    }
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    textarea { resize: vertical; min-height: 90px; }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%; padding: 13px 24px; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-top: 20px;
+      letter-spacing: 0.03em;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.1s;
+      border: 2px solid transparent;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-purple {
+      color: var(--purple); border-color: var(--purple);
+      background: rgba(168,85,247,0.06); box-shadow: 0 0 16px rgba(168,85,247,0.22);
+    }
+    .btn-purple:hover    { background: var(--purple); color: var(--bg); box-shadow: 0 0 28px rgba(168,85,247,0.55); }
+    .btn-purple:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .btn-cyan {
+      color: var(--cyan); border-color: var(--cyan);
+      background: rgba(34,211,238,0.05); box-shadow: 0 0 14px rgba(34,211,238,0.18);
+    }
+    .btn-cyan:hover    { background: var(--cyan); color: var(--bg); box-shadow: 0 0 26px rgba(34,211,238,0.5); }
+    .btn-cyan:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      color: var(--muted); border-color: rgba(255,255,255,0.1);
+      background: transparent; box-shadow: none;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.22); }
+
+    /* Home choice cards */
+    .choice-btn {
+      display: flex; align-items: center; gap: 16px;
+      padding: 18px 20px; border-radius: 16px; width: 100%;
+      border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+      color: var(--text); cursor: pointer; margin-bottom: 12px; text-align: left;
+      transition: border-color 0.18s, background 0.18s, transform 0.1s;
+    }
+    .choice-btn:hover { border-color: var(--purple); background: rgba(168,85,247,0.08); transform: translateY(-1px); }
+    .choice-icon  { font-size: 2rem; flex-shrink: 0; }
+    .choice-title { font-weight: 700; font-size: 0.98rem; margin-bottom: 2px; }
+    .choice-desc  { font-size: 0.76rem; color: var(--muted); }
+
+    /* Home footer */
+    .home-footer {
+      display: flex; align-items: center; justify-content: center;
+      gap: 16px; margin-top: 8px;
+    }
+    .home-footer-btn {
+      background: transparent; border: none; color: var(--muted);
+      font-size: 0.82rem; cursor: pointer; padding: 6px 12px; border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .home-footer-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+    /* Advanced settings accordion */
+    .adv-toggle {
+      width: 100%; text-align: left; background: transparent;
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
+      padding: 10px 14px; color: var(--muted); font-size: 0.82rem;
+      cursor: pointer; margin-top: 20px; transition: all 0.15s; font-family: inherit;
+    }
+    .adv-toggle:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+    .adv-section { padding-top: 4px; }
+
+    /* Checkbox row */
+    .check-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 18px;
+    }
+    .check-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--purple); flex-shrink: 0; cursor: pointer; }
+    .check-row span { font-size: 0.88rem; color: rgba(240,239,255,0.7); cursor: pointer; }
+
+    /* Two-col row for short number fields */
+    .field-row { display: flex; gap: 12px; }
+    .field-row > div { flex: 1; }
+
+    /* QR code */
+    #qr-container { display: flex; justify-content: center; margin: 14px 0 6px; }
+    #qr-container canvas, #qr-container img { border-radius: 10px; }
+
+    /* Code display */
+    .code-display { display: flex; justify-content: center; gap: 9px; margin: 20px 0 14px; }
+    .code-digit {
+      width: 50px; height: 64px;
+      background: rgba(168,85,247,0.07); border: 2px solid var(--purple);
+      border-radius: 12px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem; font-weight: 900; color: var(--purple);
+      text-shadow: 0 0 14px var(--purple); box-shadow: 0 0 16px rgba(168,85,247,0.18);
+      opacity: 0; animation: codePop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    .code-digit:nth-child(1){animation-delay:0.06s}
+    .code-digit:nth-child(2){animation-delay:0.13s}
+    .code-digit:nth-child(3){animation-delay:0.20s}
+    .code-digit:nth-child(4){animation-delay:0.27s}
+    .code-digit:nth-child(5){animation-delay:0.34s}
+    .code-digit:nth-child(6){animation-delay:0.41s}
+    @keyframes codePop {
+      from { opacity: 0; transform: translateY(14px) scale(0.72); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .share-row { display: flex; gap: 8px; margin-bottom: 4px; }
+    .share-link-box {
+      flex: 1; padding: 10px 13px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(168,85,247,0.28); border-radius: 10px;
+      font-size: 0.8rem; color: rgba(168,85,247,0.85); word-break: break-all; line-height: 1.4;
+    }
+    .copy-btn {
+      padding: 10px 14px; border-radius: 10px; cursor: pointer;
+      background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.35);
+      color: var(--purple); font-size: 0.82rem; font-weight: 700; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: rgba(168,85,247,0.22); }
+    .share-hint { font-size: 0.72rem; color: var(--muted); margin-bottom: 16px; }
+
+    /* Join code boxes */
+    .code-input-row { display: flex; justify-content: center; gap: 9px; margin: 20px 0 6px; }
+    .code-box {
+      width: 48px; height: 62px; background: rgba(255,255,255,0.04);
+      border: 2px solid rgba(168,85,247,0.28); border-radius: 12px; text-align: center;
+      font-size: 1.7rem; font-weight: 900; color: var(--purple);
+      font-family: inherit; caret-color: var(--purple);
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .code-box:focus { outline: none; border-color: var(--purple); box-shadow: 0 0 0 3px rgba(168,85,247,0.2); }
+    .code-box.error { border-color: var(--pink); }
+
+    .field-error {
+      color: var(--pink); font-size: 0.8rem; text-align: center; margin-top: 8px; display: none;
+    }
+    .field-error.visible { display: block; animation: shake 0.4s ease; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}  60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+    }
+
+    /* Password section on join */
+    #password-section { display: none; }
+    #password-section.visible { display: block; }
+
+    /* Name picker */
+    .neon-divider {
+      height: 1px; background: linear-gradient(90deg,transparent,var(--purple),transparent);
+      margin: 24px 0; opacity: 0.4;
+    }
+    #name-picker-section { display: none; }
+    #name-picker-section.visible { display: block; }
+
+    .name-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr));
+      gap: 9px; margin-top: 10px;
+    }
+    .name-card {
+      padding: 14px 10px; border: 1px solid rgba(168,85,247,0.28); border-radius: 12px;
+      background: rgba(168,85,247,0.05); color: var(--text); cursor: pointer;
+      text-align: center; font-weight: 600; font-size: 0.9rem; transition: all 0.18s;
+    }
+    .name-card:hover       { border-color: var(--purple); background: rgba(168,85,247,0.14); transform: translateY(-2px); }
+    .name-card.selected    { border-color: var(--cyan); background: rgba(34,211,238,0.1); color: var(--cyan); }
+    .name-card.voted       { opacity: 0.28; cursor: not-allowed; text-decoration: line-through; }
+    .name-card.voted:hover { transform: none; border-color: rgba(168,85,247,0.28); background: rgba(168,85,247,0.05); }
+
+    /* Spectator */
+    .spectator-badge {
+      background: rgba(34,211,238,0.07); border: 1px solid rgba(34,211,238,0.22);
+      border-radius: 8px; padding: 7px 14px; font-size: 0.78rem;
+      color: rgba(34,211,238,0.8); text-align: center; margin-bottom: 14px; display: none;
+    }
+    .spectator-badge.visible { display: block; }
+
+    /* Suggest screen */
+    .voter-banner {
+      background: rgba(168,85,247,0.09); border: 1px solid rgba(168,85,247,0.28);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 15px;
+      font-size: 0.88rem; color: rgba(240,239,255,0.65);
+    }
+    .voter-banner strong { color: var(--purple); }
+    .tip {
+      background: rgba(34,211,238,0.05); border: 1px solid rgba(34,211,238,0.2);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 15px;
+      font-size: 0.82rem; color: rgba(34,211,238,0.8); line-height: 1.5;
+    }
+
+    /* Locked option cards */
+    .locked-opt-card {
+      padding: 14px 12px; border: 1px solid rgba(168,85,247,0.28); border-radius: 12px;
+      background: rgba(168,85,247,0.05); color: var(--text); cursor: pointer;
+      text-align: center; font-weight: 600; font-size: 0.9rem;
+      transition: all 0.18s; margin-bottom: 8px;
+    }
+    .locked-opt-card:hover    { border-color: var(--purple); background: rgba(168,85,247,0.14); }
+    .locked-opt-card.selected { border-color: var(--cyan); background: rgba(34,211,238,0.1); color: var(--cyan); }
+    .locked-picks-hint { font-size: 0.76rem; color: var(--muted); text-align: center; margin-top: 6px; }
+
+    /* Tie opts */
+    .tie-opt-btn {
+      display: block; width: 100%; padding: 18px 20px; border-radius: 14px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+      border: 2px solid rgba(168,85,247,0.4); background: rgba(168,85,247,0.07);
+      color: var(--text); text-align: center; transition: all 0.18s;
+    }
+    .tie-opt-btn:hover    { border-color: var(--purple); background: rgba(168,85,247,0.16); transform: translateY(-2px); }
+    .tie-opt-btn.selected { border-color: var(--cyan); background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+    /* Timer bar */
+    #timer-section {
+      background: rgba(168,85,247,0.07); border: 1px solid rgba(168,85,247,0.22);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: none;
+    }
+    #timer-bar-wrap {
+      background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 6px;
+    }
+    #timer-bar {
+      height: 100%; background: var(--purple); box-shadow: 0 0 6px rgba(168,85,247,0.5);
+      border-radius: 4px; transition: width 1s linear; width: 100%;
+    }
+    #timer-text { font-size: 0.8rem; color: rgba(240,239,255,0.7); text-align: center; }
+
+    /* Waiting screen */
+    .votes-counter {
+      background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.28);
+      border-radius: 12px; padding: 14px 16px; text-align: center; margin-bottom: 18px;
+    }
+    .votes-counter .big-num {
+      font-size: 2rem; font-weight: 900; color: var(--purple);
+      text-shadow: 0 0 18px rgba(168,85,247,0.6); display: block; margin-bottom: 2px;
+    }
+    .votes-counter .votes-label { font-size: 0.82rem; color: var(--muted); }
+    .voter-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border-radius: 10px; margin-bottom: 7px;
+      background: rgba(255,255,255,0.03); font-size: 0.9rem; color: var(--text); transition: background 0.4s;
+    }
+    .voter-row.done { background: rgba(34,211,238,0.07); }
+    .voter-status   { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    #waiting-anon-note {
+      text-align: center; color: var(--muted); font-size: 0.82rem; padding: 14px;
+      background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 14px; display: none;
+    }
+
+    /* PP picker */
+    .pp-progress {
+      background: rgba(168,85,247,0.07); border: 1px solid rgba(168,85,247,0.2);
+      border-radius: 10px; padding: 10px 14px; text-align: center;
+      margin-bottom: 16px; font-size: 0.85rem; color: rgba(240,239,255,0.7);
+    }
+    .pp-progress strong { color: var(--purple); }
+
+    /* Results */
+    .winner-announce { text-align: center; padding: 12px 0; min-height: 56px; }
+    .winner-name {
+      font-size: 1.65rem; font-weight: 900; color: var(--cyan);
+      animation: winnerGlow 1.6s ease-in-out infinite alternate;
+    }
+    @keyframes winnerGlow {
+      from { text-shadow: 0 0 16px var(--cyan); }
+      to   { text-shadow: 0 0 30px var(--cyan), 0 0 60px rgba(34,211,238,0.4); }
+    }
+    .tie-rolling { font-size: 1.5rem; font-weight: 900; color: var(--yellow); }
+    .tie-note    { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+    .tie-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+    .tie-actions .btn { width: auto; margin-top: 0; padding: 11px 20px; }
+
+    .result-card {
+      display: flex; align-items: center; gap: 13px;
+      padding: 13px 17px; border-radius: 14px; margin-bottom: 9px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      opacity: 0; animation: slideInUp 0.4s ease forwards;
+    }
+    .result-card.winner { background: rgba(168,85,247,0.09); border-color: rgba(168,85,247,0.4); }
+    .result-card:nth-child(1){animation-delay:0.08s}
+    .result-card:nth-child(2){animation-delay:0.20s}
+    .result-card:nth-child(3){animation-delay:0.32s}
+    .result-card:nth-child(4){animation-delay:0.44s}
+    .result-card:nth-child(5){animation-delay:0.56s}
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .result-medal { font-size: 1.4rem; width: 30px; text-align: center; flex-shrink: 0; }
+    .result-info  { flex: 1; }
+    .result-name  { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+    .result-sub   { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .bar-wrap  { width: 68px; flex-shrink: 0; }
+    .bar-track { background: rgba(255,255,255,0.08); border-radius: 4px; height: 6px; overflow: hidden; }
+    .bar-fill  {
+      height: 100%; border-radius: 4px; width: 0%;
+      background: var(--purple); box-shadow: 0 0 6px rgba(168,85,247,0.5);
+      transition: width 0.9s cubic-bezier(0.22,1,0.36,1);
+    }
+    .result-card.winner .bar-fill { background: var(--cyan); box-shadow: 0 0 6px rgba(34,211,238,0.5); }
+    .scoring-note { font-size: 0.71rem; color: var(--muted); text-align: center; margin-top: 14px; line-height: 1.6; }
+
+    /* Emoji reactions */
+    #emoji-reactions { margin: 16px 0; display: none; }
+    #emoji-reactions .sub { margin-bottom: 10px; }
+    #emoji-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+    .emoji-react-btn {
+      padding: 8px 12px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);
+      color: var(--text); cursor: pointer; font-size: 1.1rem;
+      transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; font-family: inherit;
+    }
+    .emoji-react-btn:hover    { border-color: var(--purple); background: rgba(168,85,247,0.1); }
+    .emoji-react-btn.selected { border-color: var(--cyan); background: rgba(34,211,238,0.12); }
+    .react-count { font-size: 0.75rem; color: var(--muted); min-width: 8px; }
+
+    /* Results action row */
+    .results-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .results-actions .btn { flex: 1; margin-top: 0; font-size: 0.82rem; padding: 10px 14px; min-width: 130px; }
+
+    /* Misc */
+    .center   { text-align: center; }
+    .big-icon { font-size: 3.5rem; text-align: center; margin: 10px 0 6px; }
+    .divider  { border: none; border-top: 1px solid rgba(255,255,255,0.07); margin: 20px 0 0; }
+    .session-name-badge {
+      font-size: 0.75rem; color: var(--purple); text-transform: uppercase;
+      letter-spacing: 0.1em; margin-bottom: 6px; display: none;
+    }
+  </style>
+</head>
+<body>
+
+<button class="sound-btn" id="sound-toggle" onclick="toggleSound()" title="Toggle sound">🔊</button>
+
+<!-- Firebase not configured -->
+<div id="config-overlay">
+  <div class="config-box">
+    <h2>🔧 One-time Firebase setup needed</h2>
+    <p>NHUJ uses Firebase to sync votes across devices in real-time (it's free!).<br>
+      Open <strong>groupvote.html</strong> in a text editor and replace <code>YOUR_API_KEY</code> with your real Firebase config.</p>
+    <ol class="config-steps">
+      <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></li>
+      <li>Create a project → Add a web app → copy the config object</li>
+      <li>Enable <strong>Realtime Database</strong> → Start in test mode</li>
+      <li>Paste the values into the <code>firebaseConfig</code> block in this file</li>
+      <li>Host on <a href="https://app.netlify.com/drop" target="_blank">Netlify Drop</a> or GitHub Pages for a public URL</li>
+    </ol>
+    <p style="margin-top:14px;font-size:0.8rem">
+      💡 <strong>Pass-the-Phone mode</strong> works without Firebase — just pick "Vote on This Device" on the home screen.
+    </p>
+  </div>
+</div>
+
+<!-- History overlay -->
+<div id="history-overlay">
+  <div class="history-box">
+    <h2>📜 Vote History</h2>
+    <p class="sub">Your last 20 sessions on this device.</p>
+    <div id="history-content"></div>
+    <button class="btn btn-ghost" style="margin-top:12px" onclick="closeHistory()">← Close</button>
+  </div>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+<div id="floaters"></div>
+
+
+<!-- ═══ SCREEN 1 — HOME ═══ -->
+<div class="screen active" id="screen-home">
+  <div class="nhuj-logo">NHUJ</div>
+  <div class="nhuj-sub">no judge</div>
+
+  <button class="choice-btn" onclick="goTo('screen-setup')">
+    <span class="choice-icon">✏️</span>
+    <div>
+      <div class="choice-title">Create a Vote</div>
+      <div class="choice-desc">Set up a question and share a join code with your group</div>
+    </div>
+  </button>
+
+  <button class="choice-btn" onclick="goTo('screen-passphone-setup')">
+    <span class="choice-icon">📱</span>
+    <div>
+      <div class="choice-title">Vote on This Device</div>
+      <div class="choice-desc">One phone, everyone votes in turn — no codes needed</div>
+    </div>
+  </button>
+
+  <button class="choice-btn" onclick="goTo('screen-join'); focusFirstBox()">
+    <span class="choice-icon">🔑</span>
+    <div>
+      <div class="choice-title">Join with a Code</div>
+      <div class="choice-desc">Enter the 6-digit code your host shared</div>
+    </div>
+  </button>
+
+  <div class="home-footer">
+    <button class="home-footer-btn" onclick="showHistory()">📜 History</button>
+  </div>
+</div>
+
+
+<!-- ═══ SCREEN 2 — ONLINE SETUP ═══ -->
+<div class="screen" id="screen-setup">
+  <button class="back-btn" onclick="goBack()">← Back</button>
+  <h2 style="margin-top:10px">Create a Vote</h2>
+  <div class="sub">You'll get a 6-digit code to share with your group.</div>
+
+  <label>The Question</label>
+  <input type="text" id="setup-question" placeholder="e.g. Where should we eat tonight?" maxlength="120" />
+
+  <label>Who's Voting?
+    <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one name per line)</span>
+  </label>
+  <textarea id="setup-names" placeholder="Keya&#10;Baba&#10;Mumma&#10;Alisha"></textarea>
+
+  <button type="button" class="adv-toggle" onclick="toggleAdv('setup-adv', this)">⚙️ Advanced Settings ▾</button>
+  <div id="setup-adv" class="adv-section" style="display:none">
+
+    <label>Session Display Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional, shown to voters)</span></label>
+    <input type="text" id="setup-session-name" placeholder="e.g. Friday Night Plans" maxlength="60" />
+
+    <label>Session Password <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional)</span></label>
+    <input type="password" id="setup-password" placeholder="Leave blank for no password" />
+
+    <div class="field-row" style="margin-top:20px">
+      <div>
+        <label style="margin-top:0">Vote Timer <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(minutes, 0=off)</span></label>
+        <input type="number" id="setup-timer" value="0" min="0" max="60" placeholder="0" />
+      </div>
+      <div>
+        <label style="margin-top:0">Reveal After <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(votes, 0=all)</span></label>
+        <input type="number" id="setup-min-voters" value="0" min="0" placeholder="0" />
+      </div>
+    </div>
+
+    <label>Min Picks per Voter</label>
+    <input type="number" id="setup-min-picks" value="1" min="1" max="10" />
+
+    <div class="check-row" style="margin-top:18px">
+      <input type="checkbox" id="setup-anonymous" />
+      <span onclick="document.getElementById('setup-anonymous').click()">Anonymous — hide names on the waiting screen</span>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="setup-locked-toggle" onchange="toggleLockedOpts('setup-locked-section')" />
+      <span onclick="document.getElementById('setup-locked-toggle').click()">Lock options — voters pick from a fixed list (no write-ins)</span>
+    </div>
+    <div id="setup-locked-section" style="display:none;margin-top:10px">
+      <label style="margin-top:0">Options <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line)</span></label>
+      <textarea id="setup-locked-options" placeholder="Pizza&#10;Tacos&#10;Sushi"></textarea>
+    </div>
+
+  </div>
+
+  <button class="btn btn-purple" id="create-btn" onclick="createSession()">Generate Code →</button>
+</div>
+
+
+<!-- ═══ SCREEN 3 — PASS-THE-PHONE SETUP ═══ -->
+<div class="screen" id="screen-passphone-setup">
+  <button class="back-btn" onclick="goBack()">← Back</button>
+  <h2 style="margin-top:10px">Vote on This Device</h2>
+  <div class="sub">One phone, everyone votes in turn — fully private, no internet needed.</div>
+
+  <label>The Question</label>
+  <input type="text" id="pp-question" placeholder="e.g. Who should pick the movie?" maxlength="120" />
+
+  <label>Who's Voting?
+    <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one name per line)</span>
+  </label>
+  <textarea id="pp-names" placeholder="Keya&#10;Baba&#10;Mumma&#10;Alisha"></textarea>
+
+  <button type="button" class="adv-toggle" onclick="toggleAdv('pp-adv', this)">⚙️ Options ▾</button>
+  <div id="pp-adv" class="adv-section" style="display:none">
+
+    <label>Min Picks per Voter</label>
+    <input type="number" id="pp-min-picks" value="1" min="1" max="10" />
+
+    <div class="check-row">
+      <input type="checkbox" id="pp-locked-toggle" onchange="toggleLockedOpts('pp-locked-section')" />
+      <span onclick="document.getElementById('pp-locked-toggle').click()">Lock options — voters pick from a fixed list (no write-ins)</span>
+    </div>
+    <div id="pp-locked-section" style="display:none;margin-top:10px">
+      <label style="margin-top:0">Options <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line)</span></label>
+      <textarea id="pp-locked-options" placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+    </div>
+
+  </div>
+
+  <button class="btn btn-purple" id="pp-start-btn" onclick="createPassphoneSession()">Start Voting →</button>
+</div>
+
+
+<!-- ═══ SCREEN 4 — CODE REVEAL ═══ -->
+<div class="screen" id="screen-code-reveal">
+  <h2 class="center">Session Code</h2>
+  <div id="reveal-session-name" class="session-name-badge center"></div>
+  <p class="sub center" id="reveal-question" style="font-size:0.94rem;color:var(--text);margin-bottom:6px"></p>
+  <p class="sub center" style="margin-bottom:0">Share this with your group:</p>
+
+  <div class="code-display" id="code-display"></div>
+
+  <div id="qr-container"></div>
+
+  <div class="share-row">
+    <div class="share-link-box" id="share-link-text"></div>
+    <button class="copy-btn" onclick="copyLink()">Copy</button>
+  </div>
+  <p class="share-hint">👆 Share the link, show the QR, or tell them the 6-digit code</p>
+
+  <button class="btn btn-cyan" id="host-join-btn" onclick="hostJoinSession()">Join the Vote Yourself →</button>
+</div>
+
+
+<!-- ═══ SCREEN 5 — JOIN ═══ -->
+<div class="screen" id="screen-join">
+  <button class="back-btn" onclick="leaveJoinScreen()">← Back</button>
+
+  <h2 style="margin-top:10px">Enter the Code</h2>
+  <div class="sub">Type the 6-digit code from your host.</div>
+
+  <div class="code-input-row" id="join-code-row">
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+    <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
+  </div>
+  <p class="field-error" id="join-code-error">Session not found — check the code and try again.</p>
+
+  <button class="btn btn-purple" id="join-find-btn" onclick="validateCode()" disabled>Find Session →</button>
+
+  <!-- Password step -->
+  <div id="password-section">
+    <div class="neon-divider"></div>
+    <h2>🔒 Password Required</h2>
+    <div class="sub">This session is password-protected. Ask the host.</div>
+    <input type="password" id="join-password-input" placeholder="Enter session password..." />
+    <p class="field-error" id="join-password-error">Incorrect password — try again.</p>
+    <button class="btn btn-purple" onclick="verifyPassword()">Verify →</button>
+  </div>
+
+  <!-- Name picker step -->
+  <div id="name-picker-section">
+    <div class="neon-divider"></div>
+    <div id="join-session-name-display" class="session-name-badge" style="display:none"></div>
+    <h2 id="join-q-display"></h2>
+    <div class="sub">Who are you? Pick your name.</div>
+    <div class="name-grid" id="name-grid"></div>
+    <p class="field-error" id="join-name-error">Please pick your name to continue.</p>
+    <button class="btn btn-cyan" id="join-vote-btn" onclick="joinWithName()" disabled>Start Voting →</button>
+    <button class="btn btn-ghost" id="spectator-btn" onclick="joinAsSpectator()" style="display:none;margin-top:8px;font-size:0.85rem">
+      👁️ Watch Only (no vote)
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══ SCREEN 6 — PASS-THE-PHONE PICKER ═══ -->
+<div class="screen" id="screen-passphone-picker">
+  <div style="text-align:center;margin-bottom:16px">
+    <div class="big-icon">📱</div>
+    <h2 id="pp-picker-title">Who's voting next?</h2>
+    <p class="sub" id="pp-picker-sub">Tap your name to vote privately</p>
+  </div>
+  <div class="pp-progress" id="pp-progress-bar"></div>
+  <div class="name-grid" id="pp-name-grid"></div>
+  <button class="btn btn-ghost" style="margin-top:20px;font-size:0.82rem" onclick="endPassphoneEarly()">End Voting Early</button>
+</div>
+
+
+<!-- ═══ SCREEN 7 — PASS-THE-PHONE COVER ═══ -->
+<div class="screen" id="screen-passphone-cover">
+  <div style="text-align:center;padding:10px 0">
+    <div class="big-icon">🙈</div>
+    <h2 id="pp-cover-title">Pass the Phone!</h2>
+    <p class="sub" id="pp-cover-msg" style="font-size:0.95rem;line-height:1.6">
+      Hand the phone to the next person.<br>They tap when ready to vote.
+    </p>
+    <button class="btn btn-purple" id="pp-cover-btn" style="margin-top:28px" onclick="onCoverContinue()">
+      Continue →
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══ SCREEN 8 — SUGGEST ═══ -->
+<div class="screen" id="screen-suggest">
+  <button class="back-btn" onclick="backFromSuggest()">← Back</button>
+
+  <div class="voter-banner" id="suggest-banner" style="margin-top:16px"></div>
+  <h2 id="suggest-question"></h2>
+  <div class="sub">Only you can see this — be honest!</div>
+
+  <!-- Tie-breaker re-vote -->
+  <div id="tie-opts-section" style="display:none">
+    <div class="tip">👆 It's a tie-breaker! Pick one of the two options below.</div>
+    <div id="tie-opts-grid" style="margin-top:12px"></div>
+  </div>
+
+  <!-- Locked options voting -->
+  <div id="locked-vote-section" style="display:none">
+    <div class="tip" id="locked-tip">👆 Pick from the options below.</div>
+    <div id="locked-opts-grid" style="margin-top:12px"></div>
+    <p class="locked-picks-hint" id="locked-picks-hint"></p>
+  </div>
+
+  <!-- Free write-in -->
+  <div id="free-vote-section">
+    <div class="tip">
+      ✏️ Type your picks below.
+      <strong>First line = your top choice.</strong>
+      Add more if you want — it's all optional after the first.
+    </div>
+    <label>Your Picks
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line, most wanted first)</span>
+    </label>
+    <textarea id="suggest-input"
+              placeholder="Pizza&#10;Sushi (optional)&#10;Tacos (optional)"
+              oninput="onSuggestType()"></textarea>
+  </div>
+
+  <button class="btn btn-purple" id="suggest-btn" onclick="submitSuggestion()" disabled>
+    Lock In My Vote 🔒
+  </button>
+</div>
+
+
+<!-- ═══ SCREEN 9 — WAITING ═══ -->
+<div class="screen" id="screen-waiting">
+  <div class="spectator-badge" id="spectator-badge">👁️ You're watching as a spectator</div>
+  <div id="timer-section">
+    <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+    <div id="timer-text"></div>
+  </div>
+  <div class="big-icon">⏳</div>
+  <h2 class="center">Vote locked in!</h2>
+  <div class="sub center" id="waiting-sub">Waiting for the rest of the group...</div>
+
+  <div class="votes-counter">
+    <strong class="big-num" id="waiting-count">0 / 0</strong>
+    <span class="votes-label">votes in</span>
+  </div>
+
+  <div id="waiting-anon-note">🔒 Voter names are hidden — results reveal when everyone's done.</div>
+  <div class="voter-list" id="waiting-list"></div>
+</div>
+
+
+<!-- ═══ SCREEN 10 — RESULTS ═══ -->
+<div class="screen" id="screen-results">
+  <div class="big-icon center">🎉</div>
+  <h2 class="center">The group has spoken!</h2>
+  <div id="results-session-name" class="session-name-badge center"></div>
+  <p class="sub center" id="results-question"></p>
+
+  <div class="winner-announce">
+    <div id="winner-display"></div>
+    <div id="tie-note" class="tie-note"></div>
+    <div id="tie-actions" class="tie-actions" style="display:none">
+      <button class="btn btn-purple" onclick="chooseRandomly()">🎲 Choose randomly</button>
+      <button class="btn btn-cyan" onclick="startRevote()">🔄 Vote again (just these 2)</button>
+    </div>
+  </div>
+
+  <div class="neon-divider"></div>
+  <div id="results-list"></div>
+
+  <!-- Emoji reactions -->
+  <div id="emoji-reactions">
+    <p class="sub">React:</p>
+    <div id="emoji-buttons"></div>
+  </div>
+
+  <p class="scoring-note">
+    Ranked by how many people suggested each option.<br>
+    Ties broken by preference order — or randomly if still tied.
+  </p>
+
+  <div class="results-actions">
+    <button class="btn btn-ghost" onclick="shareResults()">📋 Copy Results</button>
+    <button class="btn btn-ghost" onclick="voteAgainSameGroup()">🔁 Same Group</button>
+  </div>
+
+  <hr class="divider" />
+  <button class="btn btn-ghost" style="margin-top:16px" onclick="goToHome()">↩ New Vote</button>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════════
+//  FIREBASE CONFIG
+// ════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyBMCTK2rNzliNcLWbvf2CddMmmTLW1OhWA",
+  authDomain: "keytopnhuj.firebaseapp.com",
+  databaseURL: "https://keytopnhuj-default-rtdb.firebaseio.com",
+  projectId: "keytopnhuj",
+  storageBucket: "keytopnhuj.firebasestorage.app",
+  messagingSenderId: "852279320454",
+  appId: "1:852279320454:web:de3ad9df2aad61315fd607"
+};
+
+const firebaseReady = firebaseConfig.apiKey !== "YOUR_API_KEY";
+if (!firebaseReady) {
+  document.getElementById('config-overlay').classList.add('visible');
+} else {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = () => firebase.database();
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+let state = {
+  prevScreen: 'screen-home',
+  mode: 'online',           // 'online' | 'passphone'
+  sessionCode: '',
+  sessionName: '',
+  question: '',
+  participants: [],
+  myName: '',
+  selectedName: '',
+  categoryIcons: [],
+  sessionRef: null,
+  reactionsRef: null,
+  tieOptions: [],
+  tiedOptions: [],
+  selectedTieOption: '',
+  // settings
+  password: '',
+  timerMinutes: 0,
+  timerEnd: 0,
+  anonymousResults: false,
+  minVoters: 0,
+  minPicks: 1,
+  lockedOptions: [],
+  // runtime
+  timerInterval: null,
+  lastSessionData: null,
+  spectator: false,
+  selectedLockedOptions: [],
+  // pass-the-phone
+  localVotes: {},
+  currentPPVoter: '',
+  ppAllDone: false,
+  // ui
+  soundEnabled: true,
+  myReaction: '',
+};
+
+// ════════════════════════════════════════════════════
+//  SOUND
+// ════════════════════════════════════════════════════
+function toggleSound() {
+  state.soundEnabled = !state.soundEnabled;
+  localStorage.setItem('nhuj_sound', state.soundEnabled ? '1' : '0');
+  document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
+}
+
+function playSound(type) {
+  if (!state.soundEnabled) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === 'vote') {
+      const freqs = [440, 523];
+      freqs.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.25);
+        o.start(ctx.currentTime + i * 0.12);
+        o.stop(ctx.currentTime + i * 0.12 + 0.28);
+      });
+    } else if (type === 'all_voted') {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.2, ctx.currentTime + i * 0.13);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.13 + 0.3);
+        o.start(ctx.currentTime + i * 0.13);
+        o.stop(ctx.currentTime + i * 0.13 + 0.33);
+      });
+    } else if (type === 'winner') {
+      [523, 659, 784, 1047, 1319].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.22, ctx.currentTime + i * 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.4);
+        o.start(ctx.currentTime + i * 0.1);
+        o.stop(ctx.currentTime + i * 0.1 + 0.44);
+      });
+    }
+  } catch (e) {}
+}
+
+// ════════════════════════════════════════════════════
+//  HISTORY
+// ════════════════════════════════════════════════════
+function saveToHistory(question, sessionName, winner, count) {
+  const h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
+  h.unshift({ date: new Date().toLocaleDateString(), question, sessionName, winner, count });
+  localStorage.setItem('nhuj_history', JSON.stringify(h.slice(0, 20)));
+}
+
+function showHistory() {
+  const h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
+  const el = document.getElementById('history-content');
+  if (!h.length) {
+    el.innerHTML = '<p class="history-empty">No history yet — finish a vote to see it here.</p>';
+  } else {
+    el.innerHTML = h.map(s => `
+      <div class="history-item">
+        <div class="history-date">${s.date}</div>
+        <div class="history-q">${s.sessionName || s.question}</div>
+        ${s.sessionName ? `<div class="history-sub">${s.question}</div>` : ''}
+        <div class="history-winner">Winner: <strong>${s.winner}</strong></div>
+        <div class="history-sub">${s.count} participant${s.count === 1 ? '' : 's'}</div>
+      </div>
+    `).join('');
+  }
+  document.getElementById('history-overlay').classList.add('visible');
+}
+
+function closeHistory() {
+  document.getElementById('history-overlay').classList.remove('visible');
+}
+
+// ════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goTo(id) {
+  state.prevScreen = document.querySelector('.screen.active')?.id ?? 'screen-home';
+  showScreen(id);
+}
+
+function goBack() { showScreen(state.prevScreen); }
+
+function goToHome() {
+  if (state.sessionRef)   { state.sessionRef.off('value');    state.sessionRef   = null; }
+  if (state.reactionsRef) { state.reactionsRef.off('value');  state.reactionsRef = null; }
+  if (state.timerInterval){ clearInterval(state.timerInterval); state.timerInterval = null; }
+  document.getElementById('floaters').innerHTML = '';
+  document.getElementById('timer-section').style.display = 'none';
+  state = {
+    prevScreen: 'screen-home', mode: 'online',
+    sessionCode: '', sessionName: '', question: '', participants: [],
+    myName: '', selectedName: '', categoryIcons: [],
+    sessionRef: null, reactionsRef: null,
+    tieOptions: [], tiedOptions: [], selectedTieOption: '',
+    password: '', timerMinutes: 0, timerEnd: 0,
+    anonymousResults: false, minVoters: 0, minPicks: 1, lockedOptions: [],
+    timerInterval: null, lastSessionData: null, spectator: false,
+    selectedLockedOptions: [], localVotes: {}, currentPPVoter: '', ppAllDone: false,
+    soundEnabled: state.soundEnabled, myReaction: '',
+  };
+  resetJoinScreen();
+  showScreen('screen-home');
+}
+
+// ════════════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════════════
+function toggleAdv(id, btn) {
+  const el = document.getElementById(id);
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  if (btn) btn.textContent = btn.textContent.replace(open ? '▾' : '▴', open ? '▴' : '▾');
+}
+
+function toggleLockedOpts(sectionId) {
+  const toggleId = sectionId === 'setup-locked-section' ? 'setup-locked-toggle' : 'pp-locked-toggle';
+  const checked  = document.getElementById(toggleId).checked;
+  document.getElementById(sectionId).style.display = checked ? 'block' : 'none';
+}
+
+// ════════════════════════════════════════════════════
+//  FIREBASE HELPERS
+// ════════════════════════════════════════════════════
+function safeKey(name) { return name.replace(/[.#$\/\[\]]/g, '_'); }
+
+function toArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return Object.values(val);
+}
+
+async function fbCreate(code, question, participants, tieOptions, settings) {
+  const data = {
+    question, participants, suggestions: {}, createdAt: Date.now(),
+    sessionName:      settings?.sessionName      || '',
+    password:         settings?.password         || '',
+    timerEnd:         settings?.timerEnd         || 0,
+    timerMinutes:     settings?.timerMinutes      || 0,
+    anonymousResults: settings?.anonymousResults  || false,
+    minVoters:        settings?.minVoters         || 0,
+    minPicks:         settings?.minPicks          || 1,
+    lockedOptions:    settings?.lockedOptions      || [],
+  };
+  if (tieOptions && tieOptions.length) data.tieOptions = tieOptions;
+  await db().ref(`nhuj/${code}`).set(data);
+}
+
+async function fbGet(code) {
+  const snap = await db().ref(`nhuj/${code}`).once('value');
+  return snap.val();
+}
+
+async function fbSubmit(code, name, picks) {
+  await db().ref(`nhuj/${code}/suggestions/${safeKey(name)}`).set({ display: name, picks });
+}
+
+function fbWatch(code, callback) {
+  const ref = db().ref(`nhuj/${code}`);
+  ref.on('value', snap => callback(snap.val()));
+  state.sessionRef = ref;
+}
+
+// ════════════════════════════════════════════════════
+//  CATEGORY ICONS + FLOATERS
+// ════════════════════════════════════════════════════
+function getCategoryIcons(question) {
+  const q = question.toLowerCase();
+  if (/eat|food|restaurant|hungry|dinner|lunch|pizza|taco|sushi|burger|cuisine/.test(q)) return ['🍕','🌮','🍣','🍔','🍜','🥗','🍱'];
+  if (/movie|film|watch|netflix|show|series|cinema|stream/.test(q)) return ['🎬','🍿','🎞️','📽️','🎭'];
+  if (/game|play|gaming|xbox|playstation|steam/.test(q)) return ['🎮','👾','🕹️','🎲','🃏'];
+  if (/music|listen|song|band|album|playlist|concert/.test(q)) return ['🎵','🎶','🎸','🎹','🎤'];
+  if (/travel|trip|go|visit|vacation|holiday/.test(q)) return ['✈️','🗺️','🧳','🌍','🏖️'];
+  if (/wear|outfit|clothes|dress|fashion/.test(q)) return ['👗','👟','🧥','💄','👒'];
+  return ['✨','⭐','💫','🎯','🌟','🔮'];
+}
+
+function spawnFloaters(icons) {
+  const c = document.getElementById('floaters');
+  c.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement('div');
+    el.className = 'floater';
+    el.textContent = icons[i % icons.length];
+    el.style.left = `${4 + Math.random() * 90}%`;
+    el.style.top  = `${4 + Math.random() * 90}%`;
+    el.style.fontSize = `${1.5 + Math.random() * 1.8}rem`;
+    el.style.animationDuration = `${3 + Math.random() * 3}s`;
+    el.style.animationDelay   = `${Math.random() * 3}s`;
+    c.appendChild(el);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  PASS-THE-PHONE FLOW
+// ════════════════════════════════════════════════════
+function createPassphoneSession() {
+  const question     = document.getElementById('pp-question').value.trim();
+  const participants = document.getElementById('pp-names').value
+                         .split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (!question)               { alert('Please enter a question!'); return; }
+  if (participants.length < 2) { alert('Please add at least 2 names!'); return; }
+
+  state.mode         = 'passphone';
+  state.question     = question;
+  state.participants = participants;
+  state.localVotes   = {};
+  state.ppAllDone    = false;
+  state.categoryIcons = getCategoryIcons(question);
+  state.minPicks     = parseInt(document.getElementById('pp-min-picks').value) || 1;
+  state.lockedOptions = document.getElementById('pp-locked-toggle').checked
+    ? document.getElementById('pp-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  spawnFloaters(state.categoryIcons);
+  showPassphonePicker();
+  goTo('screen-passphone-picker');
+}
+
+function showPassphonePicker() {
+  const voted     = Object.keys(state.localVotes);
+  const total     = state.participants.length;
+  const doneCount = voted.length;
+  const allDone   = doneCount >= total;
+
+  document.getElementById('pp-progress-bar').innerHTML =
+    `<strong>${doneCount}</strong> of <strong>${total}</strong> voted`;
+
+  const title = document.getElementById('pp-picker-title');
+  const sub   = document.getElementById('pp-picker-sub');
+  const grid  = document.getElementById('pp-name-grid');
+  grid.innerHTML = '';
+
+  if (allDone) {
+    title.textContent = '🎉 Everyone has voted!';
+    sub.textContent   = 'Tap to see the results.';
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-cyan';
+    btn.style.marginTop = '20px';
+    btn.textContent = 'See Results →';
+    btn.onclick = showPassphoneResults;
+    grid.appendChild(btn);
+  } else {
+    title.textContent = "Who's voting next?";
+    sub.textContent   = `${doneCount} of ${total} voted — tap your name`;
+    state.participants.forEach(name => {
+      const done = voted.includes(name);
+      const card = document.createElement('div');
+      card.className = 'name-card' + (done ? ' voted' : '');
+      card.textContent = done ? `${name} ✓` : name;
+      if (!done) card.onclick = () => pickPassphoneVoter(name);
+      grid.appendChild(card);
+    });
+  }
+}
+
+function pickPassphoneVoter(name) {
+  state.currentPPVoter = name;
+  state.myName = name;
+  state.selectedLockedOptions = [];
+
+  document.getElementById('suggest-banner').innerHTML =
+    `Hey <strong>${name}</strong>! It's your turn.`;
+  document.getElementById('suggest-question').textContent = state.question;
+  document.getElementById('suggest-btn').disabled  = true;
+  document.getElementById('suggest-btn').textContent = 'Lock In My Vote 🔒';
+
+  setupSuggestScreen();
+  goTo('screen-suggest');
+}
+
+function onCoverContinue() {
+  if (state.ppAllDone) {
+    showPassphoneResults();
+  } else {
+    showPassphonePicker();
+    showScreen('screen-passphone-picker');
+  }
+}
+
+function endPassphoneEarly() {
+  const voted = Object.keys(state.localVotes).length;
+  if (voted < 2) { alert('Need at least 2 votes to show results!'); return; }
+  if (confirm(`Show results now? (${voted} of ${state.participants.length} voted)`)) {
+    showPassphoneResults();
+  }
+}
+
+function showPassphoneResults() {
+  const fakeSession = {
+    question:     state.question,
+    participants: state.participants,
+    suggestions:  state.localVotes,
+  };
+  showResults(fakeSession);
+}
+
+// ════════════════════════════════════════════════════
+//  ONLINE SETUP — create session in Firebase
+// ════════════════════════════════════════════════════
+async function createSession() {
+  if (!firebaseReady) { alert('Firebase is not configured. Set up Firebase first, or use "Vote on This Device" for local voting.'); return; }
+
+  const question     = document.getElementById('setup-question').value.trim();
+  const participants = document.getElementById('setup-names').value
+                         .split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (!question)               { alert('Please enter a question!'); return; }
+  if (participants.length < 2) { alert('Please add at least 2 names!'); return; }
+
+  const timerMins   = parseInt(document.getElementById('setup-timer').value) || 0;
+  const minVoters   = parseInt(document.getElementById('setup-min-voters').value) || 0;
+  const minPicks    = parseInt(document.getElementById('setup-min-picks').value) || 1;
+  const anonymous   = document.getElementById('setup-anonymous').checked;
+  const sessionName = document.getElementById('setup-session-name').value.trim();
+  const password    = document.getElementById('setup-password').value.trim();
+  const lockedOptsOn = document.getElementById('setup-locked-toggle').checked;
+  const lockedOptions = lockedOptsOn
+    ? document.getElementById('setup-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const btn = document.getElementById('create-btn');
+  btn.textContent = 'Creating...'; btn.disabled = true;
+
+  const code    = String(Math.floor(100000 + Math.random() * 900000));
+  const timerEnd = timerMins > 0 ? Date.now() + timerMins * 60000 : 0;
+
+  const settings = { sessionName, password, timerEnd, timerMinutes: timerMins,
+                     anonymousResults: anonymous, minVoters, minPicks, lockedOptions };
+
+  try {
+    await fbCreate(code, question, participants, null, settings);
+  } catch (err) {
+    alert('Could not reach Firebase. Check your config and internet connection.');
+    console.error(err);
+    btn.textContent = 'Generate Code →'; btn.disabled = false;
+    return;
+  }
+
+  state.sessionCode   = code;
+  state.question      = question;
+  state.participants  = participants;
+  state.sessionName   = sessionName;
+  state.password      = password;
+  state.timerEnd      = timerEnd;
+  state.timerMinutes  = timerMins;
+  state.anonymousResults = anonymous;
+  state.minVoters     = minVoters;
+  state.minPicks      = minPicks;
+  state.lockedOptions = lockedOptions;
+  state.categoryIcons = getCategoryIcons(question);
+  state.mode          = 'online';
+
+  spawnFloaters(state.categoryIcons);
+
+  // Build digit display
+  const display = document.getElementById('code-display');
+  display.innerHTML = '';
+  code.split('').forEach(ch => {
+    const d = document.createElement('div');
+    d.className = 'code-digit'; d.textContent = ch;
+    display.appendChild(d);
+  });
+
+  // Share link + QR
+  const link = `${location.origin}${location.pathname}?code=${code}`;
+  document.getElementById('share-link-text').textContent = link;
+  document.getElementById('reveal-question').textContent = `"${question}"`;
+
+  const snEl = document.getElementById('reveal-session-name');
+  if (sessionName) { snEl.textContent = sessionName; snEl.style.display = 'block'; }
+  else             { snEl.style.display = 'none'; }
+
+  // Generate QR
+  document.getElementById('qr-container').innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    try {
+      new QRCode(document.getElementById('qr-container'), {
+        text: link, width: 130, height: 130,
+        colorDark: '#a855f7', colorLight: '#0d0d1f',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    } catch (e) {}
+  }
+
+  btn.textContent = 'Generate Code →'; btn.disabled = false;
+  goTo('screen-code-reveal');
+}
+
+function copyLink() {
+  const link = document.getElementById('share-link-text').textContent;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+// Host skips code entry — jumps straight to name picker
+function hostJoinSession() {
+  state.spectator = false;
+  // State already has session info from createSession()
+  // Render the name picker directly
+  const suggestions = {};
+  renderNamePicker(state.question, state.participants, suggestions);
+  goTo('screen-join');
+}
+
+// ════════════════════════════════════════════════════
+//  JOIN SCREEN — code box wiring
+// ════════════════════════════════════════════════════
+(function wireJoinBoxes() {
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/\D/g, '').slice(-1);
+      box.classList.remove('error');
+      if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+      document.getElementById('join-find-btn').disabled = !boxes.every(b => b.value.length === 1);
+    });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+    });
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const digits = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+      digits.split('').forEach((ch, j) => { if (boxes[j]) boxes[j].value = ch; });
+      const next = Math.min(digits.length, boxes.length - 1);
+      boxes[next].focus();
+      document.getElementById('join-find-btn').disabled = !boxes.every(b => b.value.length === 1);
+    });
+  });
+})();
+
+function focusFirstBox() {
+  setTimeout(() => {
+    const first = document.querySelector('#join-code-row .code-box');
+    if (first) first.focus();
+  }, 200);
+}
+
+function resetJoinScreen() {
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  boxes.forEach(b => { b.value = ''; b.classList.remove('error'); });
+  document.getElementById('join-find-btn').disabled = true;
+  document.getElementById('join-code-error').classList.remove('visible');
+  document.getElementById('password-section').classList.remove('visible');
+  document.getElementById('name-picker-section').classList.remove('visible');
+  document.getElementById('join-vote-btn').disabled = true;
+  document.getElementById('spectator-btn').style.display = 'none';
+  document.getElementById('name-grid').innerHTML = '';
+  state.selectedName = '';
+}
+
+function leaveJoinScreen() {
+  resetJoinScreen();
+  goBack();
+}
+
+async function validateCode() {
+  if (!firebaseReady) { alert('Firebase not configured.'); return; }
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  const code  = boxes.map(b => b.value).join('');
+  const errEl = document.getElementById('join-code-error');
+  const btn   = document.getElementById('join-find-btn');
+
+  errEl.classList.remove('visible');
+  btn.textContent = 'Finding...'; btn.disabled = true;
+
+  let session;
+  try { session = await fbGet(code); } catch (e) { session = null; }
+
+  btn.textContent = 'Find Session →'; btn.disabled = false;
+
+  if (!session) {
+    showJoinError(errEl, 'Session not found — check the code and try again.', boxes);
+    return;
+  }
+  if (session.createdAt && Date.now() - session.createdAt > 24 * 60 * 60 * 1000) {
+    showJoinError(errEl, 'This session has expired. Ask the host to create a new one.');
+    return;
+  }
+
+  // Save session data to state
+  state.sessionCode      = code;
+  state.question         = session.question;
+  state.participants     = toArray(session.participants);
+  state.tieOptions       = session.tieOptions ? toArray(session.tieOptions) : [];
+  state.sessionName      = session.sessionName || '';
+  state.password         = session.password || '';
+  state.timerEnd         = session.timerEnd || 0;
+  state.timerMinutes     = session.timerMinutes || 0;
+  state.anonymousResults = session.anonymousResults || false;
+  state.minVoters        = session.minVoters || 0;
+  state.minPicks         = session.minPicks || 1;
+  state.lockedOptions    = session.lockedOptions ? toArray(session.lockedOptions) : [];
+  state.mode             = 'online';
+
+  if (!state.categoryIcons.length) {
+    state.categoryIcons = getCategoryIcons(session.question);
+    spawnFloaters(state.categoryIcons);
+  }
+
+  // Password gate
+  if (session.password) {
+    document.getElementById('password-section').classList.add('visible');
+    return;
+  }
+
+  renderNamePicker(session.question, state.participants, session.suggestions || {});
+}
+
+function showJoinError(errEl, msg, boxes) {
+  errEl.textContent = msg;
+  errEl.classList.remove('visible');
+  void errEl.offsetWidth;
+  errEl.classList.add('visible');
+  if (boxes) boxes.forEach(b => b.classList.add('error'));
+}
+
+function verifyPassword() {
+  const entered = document.getElementById('join-password-input').value;
+  const errEl   = document.getElementById('join-password-error');
+  if (entered === state.password) {
+    errEl.classList.remove('visible');
+    document.getElementById('password-section').classList.remove('visible');
+    // Re-fetch to get current vote state
+    fbGet(state.sessionCode).then(session => {
+      renderNamePicker(session.question, state.participants, session.suggestions || {});
+    });
+  } else {
+    errEl.classList.remove('visible');
+    void errEl.offsetWidth;
+    errEl.classList.add('visible');
+  }
+}
+
+function renderNamePicker(question, participants, suggestions) {
+  const votedNames = Object.values(suggestions).map(v => v.display);
+
+  const snEl = document.getElementById('join-session-name-display');
+  if (state.sessionName) { snEl.textContent = state.sessionName; snEl.style.display = 'block'; }
+  else                   { snEl.style.display = 'none'; }
+
+  document.getElementById('join-q-display').textContent = question;
+  const grid = document.getElementById('name-grid');
+  grid.innerHTML = '';
+  participants.forEach(name => {
+    const done = votedNames.includes(name);
+    const card = document.createElement('div');
+    card.className = 'name-card' + (done ? ' voted' : '');
+    card.textContent = done ? `${name} ✓` : name;
+    if (!done) card.onclick = () => selectName(name);
+    grid.appendChild(card);
+  });
+
+  document.getElementById('name-picker-section').classList.add('visible');
+  document.getElementById('join-vote-btn').disabled = true;
+  document.getElementById('spectator-btn').style.display = 'block';
+  state.selectedName = '';
+}
+
+function selectName(name) {
+  state.selectedName = name;
+  document.querySelectorAll('#name-grid .name-card:not(.voted)').forEach(c => {
+    c.classList.toggle('selected', c.textContent === name);
+  });
+  document.getElementById('join-vote-btn').disabled = false;
+}
+
+function joinAsSpectator() {
+  state.spectator = true;
+  state.myName = '';
+  document.getElementById('spectator-badge').classList.add('visible');
+  goTo('screen-waiting');
+  startWaiting();
+}
+
+function joinWithName() {
+  if (!state.selectedName) return;
+  state.myName = state.selectedName;
+  state.spectator = false;
+  state.selectedTieOption = '';
+
+  document.getElementById('suggest-banner').innerHTML =
+    `Hey <strong>${state.myName}</strong>! It's your turn.`;
+  document.getElementById('suggest-question').textContent = state.question;
+  document.getElementById('suggest-btn').disabled  = true;
+  document.getElementById('suggest-btn').textContent = 'Lock In My Vote 🔒';
+
+  setupSuggestScreen();
+  goTo('screen-suggest');
+}
+
+// ════════════════════════════════════════════════════
+//  SUGGEST SCREEN — shared by online + pass-the-phone
+// ════════════════════════════════════════════════════
+function setupSuggestScreen() {
+  const tieSection    = document.getElementById('tie-opts-section');
+  const freeSection   = document.getElementById('free-vote-section');
+  const lockedSection = document.getElementById('locked-vote-section');
+
+  if (state.tieOptions.length > 0 && state.mode === 'online') {
+    tieSection.style.display    = 'block';
+    freeSection.style.display   = 'none';
+    lockedSection.style.display = 'none';
+    const grid = document.getElementById('tie-opts-grid');
+    grid.innerHTML = '';
+    state.tieOptions.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'tie-opt-btn'; btn.textContent = opt;
+      btn.onclick = () => selectTieOption(opt);
+      grid.appendChild(btn);
+    });
+  } else if (state.lockedOptions.length > 0) {
+    tieSection.style.display    = 'none';
+    freeSection.style.display   = 'none';
+    lockedSection.style.display = 'block';
+    state.selectedLockedOptions = [];
+    const grid = document.getElementById('locked-opts-grid');
+    grid.innerHTML = '';
+    state.lockedOptions.forEach(opt => {
+      const card = document.createElement('div');
+      card.className = 'locked-opt-card'; card.textContent = opt;
+      card.onclick = () => toggleLockedOption(opt, card);
+      grid.appendChild(card);
+    });
+    const hint = document.getElementById('locked-picks-hint');
+    hint.textContent = state.minPicks > 1
+      ? `Select at least ${state.minPicks} option${state.minPicks > 1 ? 's' : ''}`
+      : 'Tap your choice';
+    document.getElementById('suggest-btn').disabled = true;
+  } else {
+    tieSection.style.display    = 'none';
+    freeSection.style.display   = 'block';
+    lockedSection.style.display = 'none';
+    document.getElementById('suggest-input').value = '';
+  }
+}
+
+function toggleLockedOption(opt, card) {
+  const idx = state.selectedLockedOptions.indexOf(opt);
+  if (idx > -1) {
+    state.selectedLockedOptions.splice(idx, 1);
+    card.classList.remove('selected');
+  } else {
+    state.selectedLockedOptions.push(opt);
+    card.classList.add('selected');
+  }
+  const needed = Math.max(1, state.minPicks);
+  document.getElementById('locked-picks-hint').textContent =
+    `${state.selectedLockedOptions.length} selected` +
+    (state.minPicks > 1 ? ` (need ${needed})` : '');
+  document.getElementById('suggest-btn').disabled = state.selectedLockedOptions.length < needed;
+}
+
+function onSuggestType() {
+  const lines = document.getElementById('suggest-input').value
+                  .split('\n').map(s => s.trim()).filter(Boolean);
+  document.getElementById('suggest-btn').disabled = lines.length < Math.max(1, state.minPicks || 1);
+}
+
+function selectTieOption(opt) {
+  state.selectedTieOption = opt;
+  document.querySelectorAll('#tie-opts-grid .tie-opt-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent === opt);
+  });
+  document.getElementById('suggest-btn').disabled = false;
+}
+
+function backFromSuggest() {
+  if (state.mode === 'passphone') {
+    state.currentPPVoter = '';
+    state.myName = '';
+    state.selectedLockedOptions = [];
+    showPassphonePicker();
+    showScreen('screen-passphone-picker');
+    return;
+  }
+  // Online: pre-fill code boxes, hide name picker
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  state.sessionCode.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
+  document.getElementById('join-find-btn').disabled = false;
+  document.getElementById('name-picker-section').classList.remove('visible');
+  state.selectedName = '';
+  state.prevScreen = 'screen-home';
+  showScreen('screen-join');
+}
+
+async function submitSuggestion() {
+  let picks;
+  if (state.lockedOptions.length > 0) {
+    if (state.selectedLockedOptions.length < Math.max(1, state.minPicks)) return;
+    picks = [...state.selectedLockedOptions];
+  } else if (state.tieOptions.length > 0) {
+    if (!state.selectedTieOption) return;
+    picks = [state.selectedTieOption];
+  } else {
+    picks = document.getElementById('suggest-input').value
+               .split('\n').map(s => s.trim()).filter(Boolean).slice(0, 5);
+    if (picks.length < Math.max(1, state.minPicks)) return;
+  }
+
+  const btn = document.getElementById('suggest-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  // Pass-the-phone: record locally
+  if (state.mode === 'passphone') {
+    state.localVotes[state.currentPPVoter] = { display: state.currentPPVoter, picks };
+    playSound('vote');
+    const totalDone = Object.keys(state.localVotes).length;
+    const allDone   = totalDone >= state.participants.length;
+    state.ppAllDone = allDone;
+
+    document.getElementById('pp-cover-msg').innerHTML = allDone
+      ? `Everyone has voted! 🎉<br>Tap to see the results.`
+      : `Great! Hand the phone to the next person.<br>They tap when ready.`;
+    document.getElementById('pp-cover-btn').textContent = allDone ? 'See Results →' : 'Continue →';
+
+    showPassphonePicker();
+    btn.textContent = 'Lock In My Vote 🔒';
+    goTo('screen-passphone-cover');
+    return;
+  }
+
+  // Online: submit to Firebase
+  try {
+    await fbSubmit(state.sessionCode, state.myName, picks);
+  } catch (err) {
+    alert('Could not save your vote. Check your internet and try again.');
+    btn.disabled = false; btn.textContent = 'Lock In My Vote 🔒';
+    return;
+  }
+
+  playSound('vote');
+  document.getElementById('spectator-badge').classList.remove('visible');
+  goTo('screen-waiting');
+  startWaiting();
+}
+
+// ════════════════════════════════════════════════════
+//  WAITING SCREEN
+// ════════════════════════════════════════════════════
+function startWaiting() {
+  let alreadyTransitioned = false;
+
+  if (state.timerEnd > 0) startCountdown();
+
+  if (state.anonymousResults) {
+    document.getElementById('waiting-anon-note').style.display = 'block';
+    document.getElementById('waiting-list').style.display = 'none';
+  } else {
+    document.getElementById('waiting-anon-note').style.display = 'none';
+    document.getElementById('waiting-list').style.display = 'block';
+  }
+
+  fbWatch(state.sessionCode, session => {
+    if (!session || alreadyTransitioned) return;
+    state.lastSessionData = session;
+
+    const suggestions  = session.suggestions || {};
+    const participants = toArray(session.participants);
+    const voted        = Object.values(suggestions).map(v => v.display);
+    const doneCount    = voted.length;
+    const totalCount   = participants.length;
+    const threshold    = state.minVoters > 0 ? Math.min(state.minVoters, totalCount) : totalCount;
+
+    document.getElementById('waiting-count').textContent = `${doneCount} / ${totalCount}`;
+    document.getElementById('waiting-sub').textContent = doneCount >= totalCount
+      ? 'Everyone voted! Revealing results...'
+      : `Waiting for ${totalCount - doneCount} more ${totalCount - doneCount === 1 ? 'person' : 'people'}...`;
+
+    if (!state.anonymousResults) {
+      const list = document.getElementById('waiting-list');
+      list.innerHTML = '';
+      participants.forEach(name => {
+        const done = voted.includes(name);
+        const row  = document.createElement('div');
+        row.className = 'voter-row' + (done ? ' done' : '');
+        row.innerHTML = `<span class="voter-status">${done ? '✅' : '⏳'}</span><span>${name}</span>`;
+        list.appendChild(row);
+      });
+    }
+
+    if (doneCount >= threshold) {
+      alreadyTransitioned = true;
+      stopCountdown();
+      playSound('all_voted');
+      setTimeout(() => showResults(session), 1400);
+    }
+  });
+}
+
+function startCountdown() {
+  document.getElementById('timer-section').style.display = 'block';
+  const totalMs = state.timerMinutes * 60000;
+
+  state.timerInterval = setInterval(() => {
+    const remaining = state.timerEnd - Date.now();
+    if (remaining <= 0) {
+      stopCountdown();
+      document.getElementById('timer-text').textContent = "⏱ Time's up!";
+      document.getElementById('timer-bar').style.width = '0%';
+      if (state.lastSessionData) showResults(state.lastSessionData);
+      return;
+    }
+    const pct  = Math.min(100, (remaining / totalMs) * 100);
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timer-text').textContent =
+      `⏱ ${mins}:${String(secs).padStart(2, '0')} remaining`;
+    document.getElementById('timer-bar').style.width = pct + '%';
+  }, 1000);
+}
+
+function stopCountdown() {
+  if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+}
+
+// ════════════════════════════════════════════════════
+//  RESULTS SCREEN
+// ════════════════════════════════════════════════════
+function showResults(session) {
+  if (state.sessionRef)   { state.sessionRef.off('value');   state.sessionRef   = null; }
+  stopCountdown();
+  document.getElementById('timer-section').style.display = 'none';
+
+  const suggestions  = session.suggestions || {};
+  const participants = toArray(session.participants);
+
+  // Tally
+  const tally = {};
+  Object.values(suggestions).forEach(entry => {
+    toArray(entry.picks).forEach((pick, i) => {
+      const key = pick.toLowerCase().trim();
+      if (!tally[key]) tally[key] = { display: pick, count: 0, points: 0 };
+      tally[key].count  += 1;
+      tally[key].points += Math.max(1, 3 - i);
+    });
+  });
+
+  const sorted = Object.values(tally).sort((a, b) =>
+    b.count !== a.count ? b.count - a.count : b.points - a.points
+  );
+
+  const top    = sorted[0];
+  const tied   = sorted.filter(x => x.count === top?.count && x.points === top?.points);
+  const isTie  = tied.length > 1;
+
+  // Session name
+  const snEl = document.getElementById('results-session-name');
+  if (state.sessionName) { snEl.textContent = state.sessionName; snEl.style.display = 'block'; }
+  else                   { snEl.style.display = 'none'; }
+
+  document.getElementById('results-question').textContent = session.question;
+  const totalVoters = participants.length;
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+
+  sorted.forEach((item, i) => {
+    const medal  = ['🥇','🥈','🥉'][i] ?? `${i + 1}.`;
+    const barPct = Math.round((item.count / top.count) * 100);
+    const card   = document.createElement('div');
+    card.className = 'result-card' + (i === 0 ? ' winner' : '');
+    card.innerHTML = `
+      <div class="result-medal">${medal}</div>
+      <div class="result-info">
+        <div class="result-name">${item.display}</div>
+        <div class="result-sub">${item.count} of ${totalVoters} ${item.count === 1 ? 'person' : 'people'} picked this</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-track"><div class="bar-fill"></div></div>
+      </div>`;
+    list.appendChild(card);
+    setTimeout(() => { card.querySelector('.bar-fill').style.width = barPct + '%'; }, 120 + i * 130);
+  });
+
+  showScreen('screen-results');
+
+  // Winner
+  const winnerEl  = document.getElementById('winner-display');
+  const tieNoteEl = document.getElementById('tie-note');
+  tieNoteEl.textContent = '';
+
+  if (!top) {
+    winnerEl.textContent = 'No votes yet.';
+  } else if (isTie) {
+    state.tiedOptions = tied.map(x => x.display);
+    winnerEl.className   = 'tie-rolling';
+    winnerEl.textContent = "🤝 It's a tie!";
+    tieNoteEl.textContent = tied.map(x => x.display).join(' vs ');
+    document.getElementById('tie-actions').style.display = 'flex';
+  } else {
+    winnerEl.className   = 'winner-name';
+    winnerEl.textContent = top.display;
+    document.getElementById('tie-actions').style.display = 'none';
+    setTimeout(launchConfetti, 500);
+    playSound('winner');
+  }
+
+  // Emoji reactions (online mode only)
+  if (state.mode === 'online' && state.sessionCode && firebaseReady) {
+    setupEmojiReactions(state.sessionCode);
+  } else {
+    document.getElementById('emoji-reactions').style.display = 'none';
+  }
+
+  // Save to history
+  if (top) saveToHistory(session.question, state.sessionName, top.display, participants.length);
+}
+
+// ════════════════════════════════════════════════════
+//  EMOJI REACTIONS
+// ════════════════════════════════════════════════════
+function emojiKey(emoji) { return `e${emoji.codePointAt(0).toString(16)}`; }
+
+function setupEmojiReactions(code) {
+  const emojis = ['🔥','🙌','😭','😂','🤯','🫡'];
+  const container = document.getElementById('emoji-buttons');
+  container.innerHTML = '';
+  emojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className   = 'emoji-react-btn';
+    btn.dataset.emoji = emoji;
+    btn.innerHTML   = `${emoji} <span class="react-count"></span>`;
+    btn.onclick     = () => reactWithEmoji(emoji, code);
+    container.appendChild(btn);
+  });
+  document.getElementById('emoji-reactions').style.display = 'block';
+
+  try {
+    const ref = db().ref(`nhuj/${code}/reactions`);
+    state.reactionsRef = ref;
+    ref.on('value', snap => {
+      const reactions = snap.val() || {};
+      emojis.forEach(emoji => {
+        const btn   = container.querySelector(`[data-emoji="${emoji}"]`);
+        const count = reactions[emojiKey(emoji)] || 0;
+        if (btn) btn.querySelector('.react-count').textContent = count > 0 ? count : '';
+      });
+    });
+  } catch (e) {}
+}
+
+function reactWithEmoji(emoji, code) {
+  try {
+    if (state.myReaction) {
+      db().ref(`nhuj/${code}/reactions/${emojiKey(state.myReaction)}`)
+          .transaction(v => Math.max(0, (v || 0) - 1));
+    }
+    state.myReaction = emoji;
+    db().ref(`nhuj/${code}/reactions/${emojiKey(emoji)}`)
+        .transaction(v => (v || 0) + 1);
+    document.querySelectorAll('.emoji-react-btn').forEach(btn => {
+      btn.classList.toggle('selected', btn.dataset.emoji === emoji);
+    });
+  } catch (e) {}
+}
+
+// ════════════════════════════════════════════════════
+//  SHARE RESULTS
+// ════════════════════════════════════════════════════
+function shareResults() {
+  const cards  = [...document.querySelectorAll('#results-list .result-card')];
+  const medals = ['🥇','🥈','🥉'];
+  const lines  = [
+    `🗳️ NHUJ Vote — ${state.sessionName || state.question}`,
+    state.sessionName ? `Question: ${state.question}` : null,
+    '',
+    ...cards.map((card, i) => {
+      const name = card.querySelector('.result-name')?.textContent || '';
+      const sub  = card.querySelector('.result-sub')?.textContent  || '';
+      return `${medals[i] ?? `${i + 1}.`} ${name}  (${sub})`;
+    })
+  ].filter(l => l !== null).join('\n');
+
+  navigator.clipboard.writeText(lines).then(() => {
+    const btn = document.querySelector('[onclick="shareResults()"]');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = orig, 2200);
+  }).catch(() => alert('Could not copy — try manually selecting the results.'));
+}
+
+// ════════════════════════════════════════════════════
+//  VOTE AGAIN — SAME GROUP
+// ════════════════════════════════════════════════════
+function voteAgainSameGroup() {
+  if (state.reactionsRef) { state.reactionsRef.off('value'); state.reactionsRef = null; }
+
+  if (state.mode === 'passphone') {
+    state.localVotes  = {};
+    state.ppAllDone   = false;
+    state.question    = '';
+    document.getElementById('pp-question').value = '';
+    document.getElementById('pp-names').value    = state.participants.join('\n');
+    document.getElementById('floaters').innerHTML = '';
+    showScreen('screen-passphone-setup');
+    document.getElementById('pp-question').focus();
+    return;
+  }
+
+  // Online — go to setup with names pre-filled
+  if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
+  document.getElementById('setup-question').value     = '';
+  document.getElementById('setup-names').value        = state.participants.join('\n');
+  document.getElementById('setup-session-name').value = state.sessionName || '';
+  document.getElementById('setup-password').value     = state.password || '';
+  document.getElementById('setup-anonymous').checked  = state.anonymousResults;
+  document.getElementById('setup-min-picks').value    = state.minPicks || 1;
+
+  state.sessionCode = ''; state.question = ''; state.myName = '';
+
+  showScreen('screen-setup');
+  document.getElementById('setup-question').focus();
+}
+
+// ════════════════════════════════════════════════════
+//  TIE RESOLUTION
+// ════════════════════════════════════════════════════
+function chooseRandomly() {
+  document.getElementById('tie-actions').style.display = 'none';
+  const winnerEl  = document.getElementById('winner-display');
+  const tieNoteEl = document.getElementById('tie-note');
+  const symbols   = ['🎲','🃏','🎯','🎰','⚡','✨','🌀','💥'];
+  let idx = 0;
+  winnerEl.className   = 'tie-rolling';
+  winnerEl.textContent = '🎲 Rolling...';
+  const roll = setInterval(() => { winnerEl.textContent = `${symbols[idx++ % symbols.length]} Rolling...`; }, 130);
+  setTimeout(() => {
+    clearInterval(roll);
+    const winner = state.tiedOptions[Math.floor(Math.random() * state.tiedOptions.length)];
+    winnerEl.className   = 'winner-name';
+    winnerEl.textContent = winner;
+    tieNoteEl.textContent = '(tie — randomly selected!)';
+    playSound('winner');
+  }, 2300);
+  setTimeout(launchConfetti, 3000);
+}
+
+async function startRevote() {
+  document.getElementById('tie-actions').style.display = 'none';
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  try {
+    await fbCreate(code, state.question, state.participants, state.tiedOptions, {
+      sessionName: state.sessionName, password: state.password,
+      timerEnd: state.timerMinutes > 0 ? Date.now() + state.timerMinutes * 60000 : 0,
+      timerMinutes: state.timerMinutes, anonymousResults: state.anonymousResults,
+      minVoters: state.minVoters, minPicks: state.minPicks, lockedOptions: [],
+    });
+  } catch (err) {
+    alert('Could not create re-vote. Check your internet connection.');
+    document.getElementById('tie-actions').style.display = 'flex';
+    return;
+  }
+
+  if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
+  if (state.reactionsRef){ state.reactionsRef.off('value'); state.reactionsRef = null; }
+  state.sessionCode = code;
+  state.tieOptions  = [...state.tiedOptions];
+  state.myReaction  = '';
+
+  const display = document.getElementById('code-display');
+  display.innerHTML = '';
+  code.split('').forEach(ch => {
+    const d = document.createElement('div');
+    d.className = 'code-digit'; d.textContent = ch;
+    display.appendChild(d);
+  });
+
+  const link = `${location.origin}${location.pathname}?code=${code}`;
+  document.getElementById('share-link-text').textContent = link;
+  document.getElementById('reveal-question').textContent =
+    `"${state.question}" — Re-vote: ${state.tiedOptions.join(' vs ')}`;
+
+  document.getElementById('qr-container').innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    try { new QRCode(document.getElementById('qr-container'), { text: link, width: 130, height: 130, colorDark: '#a855f7', colorLight: '#0d0d1f' }); } catch (e) {}
+  }
+
+  goTo('screen-code-reveal');
+}
+
+// ════════════════════════════════════════════════════
+//  CONFETTI
+// ════════════════════════════════════════════════════
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx    = canvas.getContext('2d');
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = 'block';
+  const colors = ['#a855f7','#22d3ee','#f43f5e','#fbbf24','#f0abfc','#67e8f9'];
+  const parts  = Array.from({ length: 200 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -(Math.random() * canvas.height * 0.5),
+    w: 4 + Math.random() * 9, h: 8 + Math.random() * 9,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * Math.PI * 2, rotS: (Math.random() - 0.5) * 0.14,
+    vx: (Math.random() - 0.5) * 3.5, vy: 2.5 + Math.random() * 4, a: 1
+  }));
+  (function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    parts.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.rotS;
+      if (p.y > canvas.height * 0.73) p.a -= 0.022;
+      if (p.a > 0) alive = true;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.a);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      if (p.w > 9) { ctx.beginPath(); ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2); ctx.fill(); }
+      else          { ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); }
+      ctx.restore();
+    });
+    if (alive) requestAnimationFrame(draw);
+    else canvas.style.display = 'none';
+  })();
+}
+
+// ════════════════════════════════════════════════════
+//  AUTO-JOIN FROM URL  (?code=123456)
+// ════════════════════════════════════════════════════
+(function checkUrl() {
+  const code = new URLSearchParams(location.search).get('code');
+  if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) return;
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  code.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
+  document.getElementById('join-find-btn').disabled = false;
+  state.prevScreen = 'screen-home';
+  showScreen('screen-join');
+  validateCode();
+})();
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+(function init() {
+  const stored = localStorage.getItem('nhuj_sound');
+  state.soundEnabled = stored !== '0';
+  document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
+})();
+</script>
+</body>
+</html>
