@@ -706,6 +706,7 @@
   <p class="share-hint">👆 Share the link, show the QR, or tell them the 6-digit code</p>
 
   <button class="btn btn-cyan" id="host-join-btn" onclick="hostJoinSession()">Join the Vote Yourself →</button>
+  <button class="btn btn-ghost" style="margin-top:8px;font-size:0.85rem" onclick="hostWatchSession()">👁️ Watch Votes &amp; Reveal Results →</button>
 </div>
 
 
@@ -842,6 +843,7 @@
 
   <div id="waiting-anon-note">🔒 Voter names are hidden — results reveal when everyone's done.</div>
   <div class="voter-list" id="waiting-list"></div>
+  <button class="btn btn-cyan" id="reveal-now-btn" style="display:none;margin-top:16px" onclick="manualReveal()">🎉 Reveal Results →</button>
 </div>
 
 
@@ -1560,6 +1562,28 @@ function joinAsSpectator() {
   startWaiting();
 }
 
+function hostWatchSession() {
+  state.spectator = true;
+  state.myName = '';
+  document.getElementById('spectator-badge').classList.add('visible');
+  document.getElementById('reveal-now-btn').style.display = 'none';
+  showScreen('screen-waiting');
+  startWaiting();
+}
+
+async function manualReveal() {
+  if (state.lastSessionData) {
+    showResults(state.lastSessionData);
+  } else {
+    try {
+      const session = await fbGet(state.sessionCode);
+      if (session) showResults(session);
+    } catch (e) {
+      alert('Could not load results. Check your connection and try again.');
+    }
+  }
+}
+
 function joinWithName() {
   if (!state.selectedName) return;
   state.myName = state.selectedName;
@@ -1767,6 +1791,7 @@ function startWaiting() {
     }
 
     if (doneCount >= threshold) {
+      document.getElementById('reveal-now-btn').style.display = 'block';
       alreadyTransitioned = true;
       stopCountdown();
       playSound('all_voted');
@@ -2216,17 +2241,14 @@ function doSignOut() {
 }
 
 // ════════════════════════════════════════════════════
-//  AUTO-JOIN FROM URL  (?code=123456)
+//  OPEN JOIN SCREEN FROM URL  (?code=123456)
 // ════════════════════════════════════════════════════
 (function checkUrl() {
   const code = new URLSearchParams(location.search).get('code');
   if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) return;
-  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
-  code.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
-  document.getElementById('join-find-btn').disabled = false;
   state.prevScreen = 'screen-home';
   showScreen('screen-join');
-  validateCode();
+  focusFirstBox();
 })();
 
 // ════════════════════════════════════════════════════
