@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NHUJ — No Judge</title>
+  <title>NOJU — No Judge</title>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,6 +60,33 @@
     .history-sub    { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
     .history-winner { font-size: 0.82rem; color: var(--cyan); margin-top: 6px; }
     .history-empty  { color: var(--muted); text-align: center; padding: 30px 0; font-size: 0.88rem; }
+
+    /* Auth overlay */
+    #auth-overlay {
+      display: none; position: fixed; inset: 0; z-index: 999;
+      background: rgba(7,7,15,0.95); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 24px 20px;
+    }
+    #auth-overlay.visible { display: flex; }
+    .auth-box {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 32px; max-width: 420px; width: 100%;
+    }
+    .auth-tabs {
+      display: flex; gap: 6px; margin-bottom: 24px;
+      background: rgba(255,255,255,0.04); border-radius: 10px; padding: 4px;
+    }
+    .auth-tab {
+      flex: 1; padding: 9px; border-radius: 8px; border: none;
+      background: transparent; color: var(--muted); font-size: 0.9rem;
+      font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.18s;
+    }
+    .auth-tab.active { background: var(--purple); color: white; }
+    .auth-error {
+      color: var(--pink); font-size: 0.8rem; margin-top: 10px; display: none;
+      padding: 8px 12px; background: rgba(244,63,94,0.1); border-radius: 8px;
+    }
+    .auth-error.visible { display: block; }
 
     #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; display: none; }
     #floaters { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
@@ -466,7 +494,7 @@
 <div id="config-overlay">
   <div class="config-box">
     <h2>🔧 One-time Firebase setup needed</h2>
-    <p>NHUJ uses Firebase to sync votes across devices in real-time (it's free!).<br>
+    <p>NOJU uses Firebase to sync votes across devices in real-time (it's free!).<br>
       Open <strong>groupvote.html</strong> in a text editor and replace <code>YOUR_API_KEY</code> with your real Firebase config.</p>
     <ol class="config-steps">
       <li>Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a></li>
@@ -481,11 +509,44 @@
   </div>
 </div>
 
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <h2 style="margin-bottom:18px;color:var(--text)">👤 Account</h2>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
+      <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Create Account</button>
+    </div>
+
+    <div id="auth-signin-form">
+      <label>Username</label>
+      <input type="text" id="signin-username" placeholder="your_username" autocomplete="username" />
+      <label>Password</label>
+      <input type="password" id="signin-password" placeholder="••••••••" autocomplete="current-password" />
+      <div class="auth-error" id="signin-error"></div>
+      <button class="btn btn-purple" onclick="doSignIn()">Sign In →</button>
+    </div>
+
+    <div id="auth-signup-form" style="display:none">
+      <label>Choose a Username</label>
+      <input type="text" id="signup-username" placeholder="3–20 chars: letters, numbers, _" maxlength="20" autocomplete="username" />
+      <label>Password</label>
+      <input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password" />
+      <label>Confirm Password</label>
+      <input type="password" id="signup-confirm" placeholder="Repeat your password" autocomplete="new-password" />
+      <div class="auth-error" id="signup-error"></div>
+      <button class="btn btn-cyan" onclick="doSignUp()">Create Account →</button>
+    </div>
+
+    <button class="btn btn-ghost" style="margin-top:8px;font-size:0.85rem" onclick="closeAuthOverlay()">← Close</button>
+  </div>
+</div>
+
 <!-- History overlay -->
 <div id="history-overlay">
   <div class="history-box">
     <h2>📜 Vote History</h2>
-    <p class="sub">Your last 20 sessions on this device.</p>
+    <p class="sub" id="history-sub-text">Your last 20 sessions on this device.</p>
     <div id="history-content"></div>
     <button class="btn btn-ghost" style="margin-top:12px" onclick="closeHistory()">← Close</button>
   </div>
@@ -497,7 +558,7 @@
 
 <!-- ═══ SCREEN 1 — HOME ═══ -->
 <div class="screen active" id="screen-home">
-  <div class="nhuj-logo">NHUJ</div>
+  <div class="nhuj-logo">NOJU</div>
   <div class="nhuj-sub">no judge</div>
 
   <button class="choice-btn" onclick="goTo('screen-setup')">
@@ -526,6 +587,11 @@
 
   <div class="home-footer">
     <button class="home-footer-btn" onclick="showHistory()">📜 History</button>
+    <button class="home-footer-btn" id="home-signin-btn" onclick="showAuthOverlay()">👤 Sign In</button>
+    <div id="home-user-badge" style="display:none;align-items:center;gap:4px">
+      <span id="home-username-display" style="font-size:0.82rem;color:var(--purple);padding:6px 10px">👤</span>
+      <button class="home-footer-btn" onclick="doSignOut()" style="font-size:0.75rem">Sign out</button>
+    </div>
   </div>
 </div>
 
@@ -932,15 +998,38 @@ function playSound(type) {
 // ════════════════════════════════════════════════════
 //  HISTORY
 // ════════════════════════════════════════════════════
-function saveToHistory(question, sessionName, winner, count) {
-  const h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
-  h.unshift({ date: new Date().toLocaleDateString(), question, sessionName, winner, count });
-  localStorage.setItem('nhuj_history', JSON.stringify(h.slice(0, 20)));
+async function saveToHistory(question, sessionName, winner, count) {
+  const entry = { date: new Date().toLocaleDateString(), question, sessionName, winner, count, ts: Date.now() };
+  if (currentUser && firebaseReady) {
+    const ref  = db().ref(`nhuj_users/${currentUser.uid}/history`);
+    const snap = await ref.once('value');
+    const h    = snap.val() ? Object.values(snap.val()) : [];
+    h.unshift(entry);
+    const obj  = {};
+    h.slice(0, 20).forEach((item, i) => { obj[i] = item; });
+    await ref.set(obj);
+  } else {
+    const h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
+    h.unshift(entry);
+    localStorage.setItem('nhuj_history', JSON.stringify(h.slice(0, 20)));
+  }
 }
 
-function showHistory() {
-  const h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
+async function showHistory() {
+  document.getElementById('history-overlay').classList.add('visible');
   const el = document.getElementById('history-content');
+  el.innerHTML = '<p class="history-empty" style="opacity:0.5">Loading...</p>';
+
+  let h = [];
+  if (currentUser && firebaseReady) {
+    document.getElementById('history-sub-text').textContent = 'Your saved history across all devices.';
+    const snap = await db().ref(`nhuj_users/${currentUser.uid}/history`).once('value');
+    h = snap.val() ? Object.values(snap.val()).sort((a, b) => (b.ts || 0) - (a.ts || 0)) : [];
+  } else {
+    document.getElementById('history-sub-text').textContent = 'Your last 20 sessions on this device. Sign in to save history long-term.';
+    h = JSON.parse(localStorage.getItem('nhuj_history') || '[]');
+  }
+
   if (!h.length) {
     el.innerHTML = '<p class="history-empty">No history yet — finish a vote to see it here.</p>';
   } else {
@@ -954,7 +1043,6 @@ function showHistory() {
       </div>
     `).join('');
   }
-  document.getElementById('history-overlay').classList.add('visible');
 }
 
 function closeHistory() {
@@ -1860,7 +1948,7 @@ function shareResults() {
   const cards  = [...document.querySelectorAll('#results-list .result-card')];
   const medals = ['🥇','🥈','🥉'];
   const lines  = [
-    `🗳️ NHUJ Vote — ${state.sessionName || state.question}`,
+    `🗳️ NOJU Vote — ${state.sessionName || state.question}`,
     state.sessionName ? `Question: ${state.question}` : null,
     '',
     ...cards.map((card, i) => {
@@ -2012,6 +2100,119 @@ function launchConfetti() {
     if (alive) requestAnimationFrame(draw);
     else canvas.style.display = 'none';
   })();
+}
+
+// ════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════
+let currentUser     = null;
+let currentUsername = '';
+
+if (firebaseReady) {
+  firebase.auth().onAuthStateChanged(async user => {
+    currentUser = user;
+    const signinBtn  = document.getElementById('home-signin-btn');
+    const userBadge  = document.getElementById('home-user-badge');
+    const userLabel  = document.getElementById('home-username-display');
+    if (user) {
+      const snap = await db().ref(`nhuj_users/${user.uid}/profile`).once('value');
+      currentUsername = snap.val()?.username || user.email.replace('@nhuj.app', '');
+      signinBtn.style.display  = 'none';
+      userBadge.style.display  = 'flex';
+      userLabel.textContent    = '👤 ' + currentUsername;
+    } else {
+      currentUsername          = '';
+      signinBtn.style.display  = '';
+      userBadge.style.display  = 'none';
+    }
+  });
+}
+
+function authEmail(username) {
+  return username.toLowerCase() + '@nhuj.app';
+}
+
+function showAuthOverlay() {
+  if (currentUser) { doSignOut(); return; }
+  document.getElementById('auth-overlay').classList.add('visible');
+  switchAuthTab('signin');
+}
+
+function closeAuthOverlay() {
+  document.getElementById('auth-overlay').classList.remove('visible');
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('auth-signin-form').style.display = tab === 'signin' ? 'block' : 'none';
+  document.getElementById('auth-signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+  document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+  document.getElementById('signin-error').classList.remove('visible');
+  document.getElementById('signup-error').classList.remove('visible');
+}
+
+async function doSignIn() {
+  if (!firebaseReady) return;
+  const username = document.getElementById('signin-username').value.trim();
+  const password = document.getElementById('signin-password').value;
+  const errEl    = document.getElementById('signin-error');
+  errEl.classList.remove('visible');
+
+  if (!username || !password) {
+    errEl.textContent = 'Please fill in both fields.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  try {
+    await firebase.auth().signInWithEmailAndPassword(authEmail(username), password);
+    closeAuthOverlay();
+  } catch (err) {
+    errEl.textContent = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
+      ? 'Incorrect username or password.'
+      : 'Sign in failed — try again.';
+    errEl.classList.add('visible');
+  }
+}
+
+async function doSignUp() {
+  if (!firebaseReady) return;
+  const username = document.getElementById('signup-username').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const confirm  = document.getElementById('signup-confirm').value;
+  const errEl    = document.getElementById('signup-error');
+  errEl.classList.remove('visible');
+
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+    errEl.textContent = 'Username must be 3–20 characters: letters, numbers, and _ only.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.';
+    errEl.classList.add('visible');
+    return;
+  }
+  if (password !== confirm) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  try {
+    const cred = await firebase.auth().createUserWithEmailAndPassword(authEmail(username), password);
+    await db().ref(`nhuj_users/${cred.user.uid}/profile`).set({ username });
+    closeAuthOverlay();
+  } catch (err) {
+    errEl.textContent = err.code === 'auth/email-already-in-use'
+      ? 'That username is already taken — pick another.'
+      : 'Could not create account — try again.';
+    errEl.classList.add('visible');
+  }
+}
+
+function doSignOut() {
+  if (firebaseReady) firebase.auth().signOut();
 }
 
 // ════════════════════════════════════════════════════
