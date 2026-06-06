@@ -125,14 +125,17 @@
       to   { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    .back-btn {
-      position: absolute; top: 18px; left: 20px;
+    .nav-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .back-btn, .home-btn {
       background: transparent; border: none; color: var(--muted);
       font-size: 0.87rem; cursor: pointer; padding: 5px 9px; border-radius: 8px;
       transition: color 0.15s, background 0.15s;
       display: flex; align-items: center; gap: 5px;
     }
-    .back-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .back-btn:hover, .home-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
 
     .nhuj-logo {
       font-size: 3rem; font-weight: 900; letter-spacing: -2px; line-height: 1;
@@ -598,17 +601,23 @@
 
 <!-- ═══ SCREEN 2 — ONLINE SETUP ═══ -->
 <div class="screen" id="screen-setup">
-  <button class="back-btn" onclick="goBack()">← Back</button>
-  <h2 style="margin-top:10px">Create a Vote</h2>
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
+  <h2>Create a Vote</h2>
   <div class="sub">You'll get a 6-digit code to share with your group.</div>
 
   <label>The Question</label>
   <input type="text" id="setup-question" placeholder="e.g. Where should we eat tonight?" maxlength="120" />
 
-  <label>Who's Voting?
+  <label>Your Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional — adds you to the vote)</span></label>
+  <input type="text" id="setup-creator-name" placeholder="e.g. Keya" maxlength="40" />
+
+  <label>Everyone Else Voting?
     <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one name per line)</span>
   </label>
-  <textarea id="setup-names" placeholder="Keya&#10;Baba&#10;Mumma&#10;Alisha"></textarea>
+  <textarea id="setup-names" placeholder="Baba&#10;Mumma&#10;Alisha"></textarea>
 
   <button type="button" class="adv-toggle" onclick="toggleAdv('setup-adv', this)">⚙️ Advanced Settings ▾</button>
   <div id="setup-adv" class="adv-section" style="display:none">
@@ -655,8 +664,11 @@
 
 <!-- ═══ SCREEN 3 — PASS-THE-PHONE SETUP ═══ -->
 <div class="screen" id="screen-passphone-setup">
-  <button class="back-btn" onclick="goBack()">← Back</button>
-  <h2 style="margin-top:10px">Vote on This Device</h2>
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
+  <h2>Vote on This Device</h2>
   <div class="sub">One phone, everyone votes in turn — fully private, no internet needed.</div>
 
   <label>The Question</label>
@@ -690,6 +702,10 @@
 
 <!-- ═══ SCREEN 4 — CODE REVEAL ═══ -->
 <div class="screen" id="screen-code-reveal">
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
   <h2 class="center">Session Code</h2>
   <div id="reveal-session-name" class="session-name-badge center"></div>
   <p class="sub center" id="reveal-question" style="font-size:0.94rem;color:var(--text);margin-bottom:6px"></p>
@@ -712,9 +728,11 @@
 
 <!-- ═══ SCREEN 5 — JOIN ═══ -->
 <div class="screen" id="screen-join">
-  <button class="back-btn" onclick="leaveJoinScreen()">← Back</button>
-
-  <h2 style="margin-top:10px">Enter the Code</h2>
+  <div class="nav-row">
+    <button class="back-btn" onclick="leaveJoinScreen()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
+  <h2>Enter the Code</h2>
   <div class="sub">Type the 6-digit code from your host.</div>
 
   <div class="code-input-row" id="join-code-row">
@@ -757,6 +775,10 @@
 
 <!-- ═══ SCREEN 6 — PASS-THE-PHONE PICKER ═══ -->
 <div class="screen" id="screen-passphone-picker">
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
   <div style="text-align:center;margin-bottom:16px">
     <div class="big-icon">📱</div>
     <h2 id="pp-picker-title">Who's voting next?</h2>
@@ -770,6 +792,10 @@
 
 <!-- ═══ SCREEN 7 — PASS-THE-PHONE COVER ═══ -->
 <div class="screen" id="screen-passphone-cover">
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
   <div style="text-align:center;padding:10px 0">
     <div class="big-icon">🙈</div>
     <h2 id="pp-cover-title">Pass the Phone!</h2>
@@ -785,9 +811,11 @@
 
 <!-- ═══ SCREEN 8 — SUGGEST ═══ -->
 <div class="screen" id="screen-suggest">
-  <button class="back-btn" onclick="backFromSuggest()">← Back</button>
-
-  <div class="voter-banner" id="suggest-banner" style="margin-top:16px"></div>
+  <div class="nav-row">
+    <button class="back-btn" onclick="backFromSuggest()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
+  <div class="voter-banner" id="suggest-banner"></div>
   <h2 id="suggest-question"></h2>
   <div class="sub">Only you can see this — be honest!</div>
 
@@ -827,6 +855,10 @@
 
 <!-- ═══ SCREEN 9 — WAITING ═══ -->
 <div class="screen" id="screen-waiting">
+  <div class="nav-row">
+    <button class="back-btn" id="waiting-back-btn" onclick="leaveWaiting()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
   <div class="spectator-badge" id="spectator-badge">👁️ You're watching as a spectator</div>
   <div id="timer-section">
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
@@ -849,6 +881,10 @@
 
 <!-- ═══ SCREEN 10 — RESULTS ═══ -->
 <div class="screen" id="screen-results">
+  <div class="nav-row">
+    <button class="back-btn" onclick="goBack()">← Back</button>
+    <button class="home-btn" onclick="goToHome()">🏠 Home</button>
+  </div>
   <div class="big-icon center">🎉</div>
   <h2 class="center">The group has spoken!</h2>
   <div id="results-session-name" class="session-name-badge center"></div>
@@ -858,8 +894,9 @@
     <div id="winner-display"></div>
     <div id="tie-note" class="tie-note"></div>
     <div id="tie-actions" class="tie-actions" style="display:none">
-      <button class="btn btn-purple" onclick="chooseRandomly()">🎲 Choose randomly</button>
-      <button class="btn btn-cyan" onclick="startRevote()">🔄 Vote again (just these 2)</button>
+      <button class="btn btn-ghost" onclick="keepItATie()">🤝 Keep it a tie</button>
+      <button class="btn btn-cyan" onclick="startRevote()">🔄 Re-vote</button>
+      <button class="btn btn-purple" onclick="chooseRandomly()">🎲 Let app decide</button>
     </div>
   </div>
 
@@ -924,9 +961,11 @@ let state = {
   categoryIcons: [],
   sessionRef: null,
   reactionsRef: null,
+  randomWinnerRef: null,
   tieOptions: [],
   tiedOptions: [],
   selectedTieOption: '',
+  creatorName: '',
   // settings
   password: '',
   timerMinutes: 0,
@@ -1067,22 +1106,24 @@ function goTo(id) {
 function goBack() { showScreen(state.prevScreen); }
 
 function goToHome() {
-  if (state.sessionRef)   { state.sessionRef.off('value');    state.sessionRef   = null; }
-  if (state.reactionsRef) { state.reactionsRef.off('value');  state.reactionsRef = null; }
-  if (state.timerInterval){ clearInterval(state.timerInterval); state.timerInterval = null; }
+  if (state.sessionRef)      { state.sessionRef.off('value');      state.sessionRef      = null; }
+  if (state.reactionsRef)    { state.reactionsRef.off('value');    state.reactionsRef    = null; }
+  if (state.randomWinnerRef) { state.randomWinnerRef.off('value'); state.randomWinnerRef = null; }
+  if (state.timerInterval)   { clearInterval(state.timerInterval); state.timerInterval   = null; }
   document.getElementById('floaters').innerHTML = '';
   document.getElementById('timer-section').style.display = 'none';
+  const soundEnabled = state.soundEnabled;
   state = {
     prevScreen: 'screen-home', mode: 'online',
     sessionCode: '', sessionName: '', question: '', participants: [],
     myName: '', selectedName: '', categoryIcons: [],
-    sessionRef: null, reactionsRef: null,
-    tieOptions: [], tiedOptions: [], selectedTieOption: '',
+    sessionRef: null, reactionsRef: null, randomWinnerRef: null,
+    tieOptions: [], tiedOptions: [], selectedTieOption: '', creatorName: '',
     password: '', timerMinutes: 0, timerEnd: 0,
     anonymousResults: false, minVoters: 0, minPicks: 1, lockedOptions: [],
     timerInterval: null, lastSessionData: null, spectator: false,
     selectedLockedOptions: [], localVotes: {}, currentPPVoter: '', ppAllDone: false,
-    soundEnabled: state.soundEnabled, myReaction: '',
+    soundEnabled, myReaction: '',
   };
   resetJoinScreen();
   showScreen('screen-home');
@@ -1288,11 +1329,16 @@ async function createSession() {
   if (!firebaseReady) { alert('Firebase is not configured. Set up Firebase first, or use "Vote on This Device" for local voting.'); return; }
 
   const question     = document.getElementById('setup-question').value.trim();
+  const creatorName  = document.getElementById('setup-creator-name').value.trim();
   const participants = document.getElementById('setup-names').value
                          .split('\n').map(s => s.trim()).filter(Boolean);
 
+  if (creatorName && !participants.some(p => p.toLowerCase() === creatorName.toLowerCase())) {
+    participants.unshift(creatorName);
+  }
+
   if (!question)               { alert('Please enter a question!'); return; }
-  if (participants.length < 2) { alert('Please add at least 2 names!'); return; }
+  if (participants.length < 2) { alert('Please add at least 2 names! (include your own name or add others below)'); return; }
 
   const timerMins   = parseInt(document.getElementById('setup-timer').value) || 0;
   const minVoters   = parseInt(document.getElementById('setup-min-voters').value) || 0;
@@ -1328,6 +1374,7 @@ async function createSession() {
   state.participants  = participants;
   state.sessionName   = sessionName;
   state.password      = password;
+  state.creatorName   = creatorName;
   state.timerEnd      = timerEnd;
   state.timerMinutes  = timerMins;
   state.anonymousResults = anonymous;
@@ -1382,14 +1429,26 @@ function copyLink() {
   });
 }
 
-// Host skips code entry — jumps straight to name picker
+// Host skips code entry — jumps straight to voting
 function hostJoinSession() {
   state.spectator = false;
-  // State already has session info from createSession()
-  // Render the name picker directly
-  const suggestions = {};
-  renderNamePicker(state.question, state.participants, suggestions);
-  goTo('screen-join');
+  state.selectedTieOption = '';
+
+  if (state.creatorName) {
+    // Creator name was entered — skip name picker, go straight to voting
+    state.myName = state.creatorName;
+    document.getElementById('suggest-banner').innerHTML =
+      `Hey <strong>${state.myName}</strong>! It's your turn.`;
+    document.getElementById('suggest-question').textContent = state.question;
+    document.getElementById('suggest-btn').disabled  = true;
+    document.getElementById('suggest-btn').textContent = 'Lock In My Vote 🔒';
+    setupSuggestScreen();
+    goTo('screen-suggest');
+  } else {
+    // No creator name — show name picker so host can pick who they are
+    renderNamePicker(state.question, state.participants, {});
+    goTo('screen-join');
+  }
 }
 
 // ════════════════════════════════════════════════════
@@ -1567,8 +1626,16 @@ function hostWatchSession() {
   state.myName = '';
   document.getElementById('spectator-badge').classList.add('visible');
   document.getElementById('reveal-now-btn').style.display = 'none';
-  showScreen('screen-waiting');
+  goTo('screen-waiting');
   startWaiting();
+}
+
+function leaveWaiting() {
+  if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
+  stopCountdown();
+  document.getElementById('spectator-badge').classList.remove('visible');
+  document.getElementById('reveal-now-btn').style.display = 'none';
+  goBack();
 }
 
 async function manualReveal() {
@@ -1899,6 +1966,33 @@ function showResults(session) {
     winnerEl.textContent = "🤝 It's a tie!";
     tieNoteEl.textContent = tied.map(x => x.display).join(' vs ');
     document.getElementById('tie-actions').style.display = 'flex';
+
+    // Listen for a randomly-chosen winner written by any device
+    if (state.mode === 'online' && state.sessionCode && firebaseReady) {
+      if (state.randomWinnerRef) { state.randomWinnerRef.off('value'); }
+      const ref = db().ref(`nhuj/${state.sessionCode}/randomWinner`);
+      state.randomWinnerRef = ref;
+      let firstFire = true;
+      ref.on('value', snap => {
+        const winner = snap.val();
+        if (winner) {
+          ref.off('value');
+          state.randomWinnerRef = null;
+          document.getElementById('tie-actions').style.display = 'none';
+          if (firstFire) {
+            // Winner already existed — show instantly without animation
+            winnerEl.className    = 'winner-name';
+            winnerEl.textContent  = winner;
+            tieNoteEl.textContent = '(tie — randomly selected!)';
+            playSound('winner');
+            launchConfetti();
+          } else {
+            animateRandomWinner(winner);
+          }
+        }
+        firstFire = false;
+      });
+    }
   } else {
     winnerEl.className   = 'winner-name';
     winnerEl.textContent = top.display;
@@ -2011,14 +2105,15 @@ function voteAgainSameGroup() {
 
   // Online — go to setup with names pre-filled
   if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
-  document.getElementById('setup-question').value     = '';
-  document.getElementById('setup-names').value        = state.participants.join('\n');
-  document.getElementById('setup-session-name').value = state.sessionName || '';
-  document.getElementById('setup-password').value     = state.password || '';
-  document.getElementById('setup-anonymous').checked  = state.anonymousResults;
-  document.getElementById('setup-min-picks').value    = state.minPicks || 1;
+  document.getElementById('setup-question').value      = '';
+  document.getElementById('setup-creator-name').value  = '';
+  document.getElementById('setup-names').value         = state.participants.join('\n');
+  document.getElementById('setup-session-name').value  = state.sessionName || '';
+  document.getElementById('setup-password').value      = state.password || '';
+  document.getElementById('setup-anonymous').checked   = state.anonymousResults;
+  document.getElementById('setup-min-picks').value     = state.minPicks || 1;
 
-  state.sessionCode = ''; state.question = ''; state.myName = '';
+  state.sessionCode = ''; state.question = ''; state.myName = ''; state.creatorName = '';
 
   showScreen('screen-setup');
   document.getElementById('setup-question').focus();
@@ -2027,8 +2122,13 @@ function voteAgainSameGroup() {
 // ════════════════════════════════════════════════════
 //  TIE RESOLUTION
 // ════════════════════════════════════════════════════
-function chooseRandomly() {
+function keepItATie() {
   document.getElementById('tie-actions').style.display = 'none';
+  document.getElementById('tie-note').textContent = 'The group decided to keep it a tie!';
+  if (state.randomWinnerRef) { state.randomWinnerRef.off('value'); state.randomWinnerRef = null; }
+}
+
+function animateRandomWinner(winner) {
   const winnerEl  = document.getElementById('winner-display');
   const tieNoteEl = document.getElementById('tie-note');
   const symbols   = ['🎲','🃏','🎯','🎰','⚡','✨','🌀','💥'];
@@ -2038,13 +2138,26 @@ function chooseRandomly() {
   const roll = setInterval(() => { winnerEl.textContent = `${symbols[idx++ % symbols.length]} Rolling...`; }, 130);
   setTimeout(() => {
     clearInterval(roll);
-    const winner = state.tiedOptions[Math.floor(Math.random() * state.tiedOptions.length)];
-    winnerEl.className   = 'winner-name';
-    winnerEl.textContent = winner;
+    winnerEl.className    = 'winner-name';
+    winnerEl.textContent  = winner;
     tieNoteEl.textContent = '(tie — randomly selected!)';
     playSound('winner');
   }, 2300);
   setTimeout(launchConfetti, 3000);
+}
+
+function chooseRandomly() {
+  document.getElementById('tie-actions').style.display = 'none';
+  const winner = state.tiedOptions[Math.floor(Math.random() * state.tiedOptions.length)];
+
+  if (state.mode === 'online' && state.sessionCode && firebaseReady) {
+    // Write to Firebase — the listener in showResults fires on ALL devices with the same winner
+    db().ref(`nhuj/${state.sessionCode}/randomWinner`).set(winner);
+    // The ref.on('value') listener handles the animation for everyone
+  } else {
+    // Pass-the-phone (local) mode — just animate locally
+    animateRandomWinner(winner);
+  }
 }
 
 async function startRevote() {
@@ -2241,14 +2354,17 @@ function doSignOut() {
 }
 
 // ════════════════════════════════════════════════════
-//  OPEN JOIN SCREEN FROM URL  (?code=123456)
+//  AUTO-JOIN FROM URL  (?code=123456)
 // ════════════════════════════════════════════════════
 (function checkUrl() {
   const code = new URLSearchParams(location.search).get('code');
   if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) return;
+  const boxes = [...document.querySelectorAll('#join-code-row .code-box')];
+  code.split('').forEach((ch, i) => { if (boxes[i]) boxes[i].value = ch; });
+  document.getElementById('join-find-btn').disabled = false;
   state.prevScreen = 'screen-home';
   showScreen('screen-join');
-  focusFirstBox();
+  validateCode();
 })();
 
 // ════════════════════════════════════════════════════
