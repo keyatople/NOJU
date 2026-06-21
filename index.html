@@ -38,12 +38,12 @@
     .config-steps li { color: rgba(240,239,255,0.7); font-size: 0.84rem; line-height: 2; margin-left: 16px; }
 
     /* History overlay */
-    #history-overlay {
+    #history-overlay, #templates-overlay {
       display: none; position: fixed; inset: 0; z-index: 998;
       background: rgba(7,7,15,0.93); backdrop-filter: blur(4px);
       align-items: flex-start; justify-content: center; padding: 24px 20px; overflow-y: auto;
     }
-    #history-overlay.visible { display: flex; }
+    #history-overlay.visible, #templates-overlay.visible { display: flex; }
     .history-box {
       background: var(--card); border: 1px solid var(--border);
       border-radius: 20px; padding: 28px; max-width: 480px; width: 100%; margin: auto;
@@ -487,6 +487,58 @@
       font-size: 0.75rem; color: var(--purple); text-transform: uppercase;
       letter-spacing: 0.1em; margin-bottom: 6px; display: none;
     }
+
+    /* Veto section (suggest screen) */
+    .veto-section {
+      margin-top: 18px; padding: 12px 14px; border-radius: 10px;
+      background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.25);
+    }
+    .veto-section label { color: rgba(244,63,94,0.85); margin-top: 0; }
+    .veto-section .veto-hint { font-size: 0.74rem; color: var(--muted); margin-top: 6px; }
+    select {
+      width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(244,63,94,0.3); border-radius: 10px;
+      color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer;
+    }
+    select:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(244,63,94,0.18); }
+
+    /* Results veto + breakdown */
+    .result-veto { color: var(--pink); font-weight: 700; }
+    .result-card.vetoed-out { opacity: 0.7; }
+    .breakdown-voters {
+      font-size: 0.72rem; color: var(--muted); margin-top: 5px; line-height: 1.5;
+      display: none;
+    }
+    .breakdown-voters.visible { display: block; }
+    .breakdown-voters .bd-label { color: rgba(168,85,247,0.8); }
+
+    /* Deadline note (waiting screen) */
+    #deadline-note {
+      display: none; text-align: center; font-size: 0.82rem; color: var(--cyan);
+      background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.2);
+      border-radius: 10px; padding: 9px 12px; margin-bottom: 14px;
+    }
+
+    /* Templates overlay */
+    .template-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 12px 14px; border-radius: 12px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 10px;
+    }
+    .template-item .t-info { flex: 1; min-width: 0; }
+    .template-name { font-weight: 700; color: var(--text); font-size: 0.9rem; }
+    .template-sub  { font-size: 0.75rem; color: var(--muted); margin-top: 2px; word-break: break-word; }
+    .template-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .t-btn {
+      padding: 7px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; border: 1px solid; font-family: inherit; background: transparent;
+      transition: background 0.15s;
+    }
+    .t-use { color: var(--cyan); border-color: var(--cyan); }
+    .t-use:hover { background: rgba(34,211,238,0.12); }
+    .t-del { color: var(--pink); border-color: rgba(244,63,94,0.4); }
+    .t-del:hover { background: rgba(244,63,94,0.12); }
   </style>
 </head>
 <body>
@@ -555,6 +607,16 @@
   </div>
 </div>
 
+<!-- Templates overlay -->
+<div id="templates-overlay">
+  <div class="history-box">
+    <h2>📁 Saved Templates</h2>
+    <p class="sub">Reuse a vote setup in one tap — same question, names, and options.</p>
+    <div id="templates-content"></div>
+    <button class="btn btn-ghost" style="margin-top:12px" onclick="closeTemplates()">← Close</button>
+  </div>
+</div>
+
 <canvas id="confetti-canvas"></canvas>
 <div id="floaters"></div>
 
@@ -590,6 +652,7 @@
 
   <div class="home-footer">
     <button class="home-footer-btn" onclick="showHistory()">📜 History</button>
+    <button class="home-footer-btn" id="home-templates-btn" style="display:none" onclick="showTemplates()">📁 Templates</button>
     <button class="home-footer-btn" id="home-signin-btn" onclick="showAuthOverlay()">👤 Sign In</button>
     <div id="home-user-badge" style="display:none;align-items:center;gap:4px">
       <span id="home-username-display" style="font-size:0.82rem;color:var(--purple);padding:6px 10px">👤</span>
@@ -642,9 +705,17 @@
     <label>Min Picks per Voter</label>
     <input type="number" id="setup-min-picks" value="1" min="1" max="10" />
 
+    <label>Auto-reveal Deadline <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(hours from now — for async votes, 0=off)</span></label>
+    <input type="number" id="setup-deadline" value="0" min="0" max="336" step="0.5" placeholder="0" />
+
     <div class="check-row" style="margin-top:18px">
       <input type="checkbox" id="setup-anonymous" />
       <span onclick="document.getElementById('setup-anonymous').click()">Anonymous — hide names on the waiting screen</span>
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="setup-veto" />
+      <span onclick="document.getElementById('setup-veto').click()">Allow vetoes — each voter can block one option they can't accept</span>
     </div>
 
     <div class="check-row">
@@ -659,6 +730,7 @@
   </div>
 
   <button class="btn btn-purple" id="create-btn" onclick="createSession()">Generate Code →</button>
+  <button class="btn btn-ghost" id="save-template-btn" style="margin-top:8px;font-size:0.85rem" onclick="saveTemplate()">💾 Save as Template</button>
 </div>
 
 
@@ -684,6 +756,11 @@
 
     <label>Min Picks per Voter</label>
     <input type="number" id="pp-min-picks" value="1" min="1" max="10" />
+
+    <div class="check-row">
+      <input type="checkbox" id="pp-veto" />
+      <span onclick="document.getElementById('pp-veto').click()">Allow vetoes — each voter can block one option they can't accept</span>
+    </div>
 
     <div class="check-row">
       <input type="checkbox" id="pp-locked-toggle" onchange="toggleLockedOpts('pp-locked-section')" />
@@ -847,6 +924,14 @@
               oninput="onSuggestType()"></textarea>
   </div>
 
+  <!-- Veto (optional, host-enabled) -->
+  <div id="veto-section" class="veto-section" style="display:none">
+    <label>🚫 Veto <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.6">(optional)</span></label>
+    <input type="text" id="veto-input" placeholder="One option you can't accept..." maxlength="60" />
+    <select id="veto-select" style="display:none"></select>
+    <div class="veto-hint">If enough people block an option, it won't win — even if it's popular.</div>
+  </div>
+
   <button class="btn btn-purple" id="suggest-btn" onclick="submitSuggestion()" disabled>
     Lock In My Vote 🔒
   </button>
@@ -860,6 +945,7 @@
     <button class="home-btn" onclick="goToHome()">🏠 Home</button>
   </div>
   <div class="spectator-badge" id="spectator-badge">👁️ You're watching as a spectator</div>
+  <div id="deadline-note"></div>
   <div id="timer-section">
     <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
     <div id="timer-text"></div>
@@ -909,13 +995,15 @@
     <div id="emoji-buttons"></div>
   </div>
 
-  <p class="scoring-note">
+  <p class="scoring-note" id="scoring-note">
     Ranked by how many people suggested each option.<br>
     Ties broken by preference order — or randomly if still tied.
   </p>
 
   <div class="results-actions">
     <button class="btn btn-ghost" onclick="shareResults()">📋 Copy Results</button>
+    <button class="btn btn-ghost" id="breakdown-btn" onclick="toggleBreakdown()">👥 Who Picked What</button>
+    <button class="btn btn-ghost" onclick="saveResultsImage()">🖼️ Save Image</button>
     <button class="btn btn-ghost" onclick="voteAgainSameGroup()">🔁 Same Group</button>
   </div>
 
@@ -970,13 +1058,17 @@ let state = {
   password: '',
   timerMinutes: 0,
   timerEnd: 0,
+  deadlineEnd: 0,
+  allowVeto: false,
   anonymousResults: false,
   minVoters: 0,
   minPicks: 1,
   lockedOptions: [],
   // runtime
   timerInterval: null,
+  deadlineInterval: null,
   lastSessionData: null,
+  lastResults: null,
   spectator: false,
   selectedLockedOptions: [],
   // pass-the-phone
@@ -995,6 +1087,22 @@ function toggleSound() {
   state.soundEnabled = !state.soundEnabled;
   localStorage.setItem('nhuj_sound', state.soundEnabled ? '1' : '0');
   document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
+}
+
+// Normalize a pick so near-duplicates merge (case, whitespace, punctuation, emoji)
+function normKey(str) {
+  return (str || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{1F1E6}-\u{1F1FF}\u{200D}]/gu, '') // emoji / variation selectors
+    .replace(/[^\p{L}\p{N}\s]/gu, '') // strip punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function esc(str) {
+  return (str || '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 function playSound(type) {
@@ -1109,9 +1217,11 @@ function goToHome() {
   if (state.sessionRef)      { state.sessionRef.off('value');      state.sessionRef      = null; }
   if (state.reactionsRef)    { state.reactionsRef.off('value');    state.reactionsRef    = null; }
   if (state.randomWinnerRef) { state.randomWinnerRef.off('value'); state.randomWinnerRef = null; }
-  if (state.timerInterval)   { clearInterval(state.timerInterval); state.timerInterval   = null; }
+  if (state.timerInterval)    { clearInterval(state.timerInterval);    state.timerInterval    = null; }
+  if (state.deadlineInterval) { clearInterval(state.deadlineInterval); state.deadlineInterval = null; }
   document.getElementById('floaters').innerHTML = '';
   document.getElementById('timer-section').style.display = 'none';
+  document.getElementById('deadline-note').style.display = 'none';
   const soundEnabled = state.soundEnabled;
   state = {
     prevScreen: 'screen-home', mode: 'online',
@@ -1119,9 +1229,9 @@ function goToHome() {
     myName: '', selectedName: '', categoryIcons: [],
     sessionRef: null, reactionsRef: null, randomWinnerRef: null,
     tieOptions: [], tiedOptions: [], selectedTieOption: '', creatorName: '',
-    password: '', timerMinutes: 0, timerEnd: 0,
+    password: '', timerMinutes: 0, timerEnd: 0, deadlineEnd: 0, allowVeto: false,
     anonymousResults: false, minVoters: 0, minPicks: 1, lockedOptions: [],
-    timerInterval: null, lastSessionData: null, spectator: false,
+    timerInterval: null, deadlineInterval: null, lastSessionData: null, lastResults: null, spectator: false,
     selectedLockedOptions: [], localVotes: {}, currentPPVoter: '', ppAllDone: false,
     soundEnabled, myReaction: '',
   };
@@ -1163,6 +1273,8 @@ async function fbCreate(code, question, participants, tieOptions, settings) {
     password:         settings?.password         || '',
     timerEnd:         settings?.timerEnd         || 0,
     timerMinutes:     settings?.timerMinutes      || 0,
+    deadlineEnd:      settings?.deadlineEnd       || 0,
+    allowVeto:        settings?.allowVeto         || false,
     anonymousResults: settings?.anonymousResults  || false,
     minVoters:        settings?.minVoters         || 0,
     minPicks:         settings?.minPicks          || 1,
@@ -1177,8 +1289,10 @@ async function fbGet(code) {
   return snap.val();
 }
 
-async function fbSubmit(code, name, picks) {
-  await db().ref(`nhuj/${code}/suggestions/${safeKey(name)}`).set({ display: name, picks });
+async function fbSubmit(code, name, picks, veto) {
+  const entry = { display: name, picks };
+  if (veto) entry.veto = veto;
+  await db().ref(`nhuj/${code}/suggestions/${safeKey(name)}`).set(entry);
 }
 
 function fbWatch(code, callback) {
@@ -1235,6 +1349,7 @@ function createPassphoneSession() {
   state.ppAllDone    = false;
   state.categoryIcons = getCategoryIcons(question);
   state.minPicks     = parseInt(document.getElementById('pp-min-picks').value) || 1;
+  state.allowVeto    = document.getElementById('pp-veto').checked;
   state.lockedOptions = document.getElementById('pp-locked-toggle').checked
     ? document.getElementById('pp-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
     : [];
@@ -1343,6 +1458,8 @@ async function createSession() {
   const timerMins   = parseInt(document.getElementById('setup-timer').value) || 0;
   const minVoters   = parseInt(document.getElementById('setup-min-voters').value) || 0;
   const minPicks    = parseInt(document.getElementById('setup-min-picks').value) || 1;
+  const deadlineHrs = parseFloat(document.getElementById('setup-deadline').value) || 0;
+  const allowVeto   = document.getElementById('setup-veto').checked;
   const anonymous   = document.getElementById('setup-anonymous').checked;
   const sessionName = document.getElementById('setup-session-name').value.trim();
   const password    = document.getElementById('setup-password').value.trim();
@@ -1356,8 +1473,10 @@ async function createSession() {
 
   const code    = String(Math.floor(100000 + Math.random() * 900000));
   const timerEnd = timerMins > 0 ? Date.now() + timerMins * 60000 : 0;
+  const deadlineEnd = deadlineHrs > 0 ? Date.now() + Math.round(deadlineHrs * 3600000) : 0;
 
   const settings = { sessionName, password, timerEnd, timerMinutes: timerMins,
+                     deadlineEnd, allowVeto,
                      anonymousResults: anonymous, minVoters, minPicks, lockedOptions };
 
   try {
@@ -1377,6 +1496,8 @@ async function createSession() {
   state.creatorName   = creatorName;
   state.timerEnd      = timerEnd;
   state.timerMinutes  = timerMins;
+  state.deadlineEnd   = deadlineEnd;
+  state.allowVeto     = allowVeto;
   state.anonymousResults = anonymous;
   state.minVoters     = minVoters;
   state.minPicks      = minPicks;
@@ -1535,6 +1656,8 @@ async function validateCode() {
   state.password         = session.password || '';
   state.timerEnd         = session.timerEnd || 0;
   state.timerMinutes     = session.timerMinutes || 0;
+  state.deadlineEnd      = session.deadlineEnd || 0;
+  state.allowVeto        = session.allowVeto || false;
   state.anonymousResults = session.anonymousResults || false;
   state.minVoters        = session.minVoters || 0;
   state.minPicks         = session.minPicks || 1;
@@ -1544,6 +1667,13 @@ async function validateCode() {
   if (!state.categoryIcons.length) {
     state.categoryIcons = getCategoryIcons(session.question);
     spawnFloaters(state.categoryIcons);
+  }
+
+  // Async deadline already passed — results are final, skip straight to them
+  if (state.deadlineEnd > 0 && Date.now() >= state.deadlineEnd) {
+    state.lastSessionData = session;
+    showResults(session);
+    return;
   }
 
   // Password gate
@@ -1633,6 +1763,8 @@ function hostWatchSession() {
 function leaveWaiting() {
   if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
   stopCountdown();
+  stopDeadline();
+  document.getElementById('deadline-note').style.display = 'none';
   document.getElementById('spectator-badge').classList.remove('visible');
   document.getElementById('reveal-now-btn').style.display = 'none';
   goBack();
@@ -1711,6 +1843,29 @@ function setupSuggestScreen() {
     lockedSection.style.display = 'none';
     document.getElementById('suggest-input').value = '';
   }
+
+  // Veto UI — hidden during tie-breakers, shown only when host enabled it
+  const vetoSection = document.getElementById('veto-section');
+  const vetoInput   = document.getElementById('veto-input');
+  const vetoSelect  = document.getElementById('veto-select');
+  const inTieBreak  = state.tieOptions.length > 0 && state.mode === 'online';
+  vetoInput.value = '';
+  if (state.allowVeto && !inTieBreak) {
+    vetoSection.style.display = 'block';
+    if (state.lockedOptions.length > 0) {
+      // Pick from the fixed list
+      vetoInput.style.display  = 'none';
+      vetoSelect.style.display = 'block';
+      vetoSelect.innerHTML = '<option value="">— no veto —</option>' +
+        state.lockedOptions.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+      vetoSelect.value = '';
+    } else {
+      vetoInput.style.display  = 'block';
+      vetoSelect.style.display = 'none';
+    }
+  } else {
+    vetoSection.style.display = 'none';
+  }
 }
 
 function toggleLockedOption(opt, card) {
@@ -1776,12 +1931,20 @@ async function submitSuggestion() {
     if (picks.length < Math.max(1, state.minPicks)) return;
   }
 
+  // Optional veto
+  let veto = '';
+  if (state.allowVeto && !(state.tieOptions.length > 0 && state.mode === 'online')) {
+    veto = state.lockedOptions.length > 0
+      ? document.getElementById('veto-select').value.trim()
+      : document.getElementById('veto-input').value.trim();
+  }
+
   const btn = document.getElementById('suggest-btn');
   btn.disabled = true; btn.textContent = 'Saving...';
 
   // Pass-the-phone: record locally
   if (state.mode === 'passphone') {
-    state.localVotes[state.currentPPVoter] = { display: state.currentPPVoter, picks };
+    state.localVotes[state.currentPPVoter] = { display: state.currentPPVoter, picks, veto };
     playSound('vote');
     const totalDone = Object.keys(state.localVotes).length;
     const allDone   = totalDone >= state.participants.length;
@@ -1800,7 +1963,7 @@ async function submitSuggestion() {
 
   // Online: submit to Firebase
   try {
-    await fbSubmit(state.sessionCode, state.myName, picks);
+    await fbSubmit(state.sessionCode, state.myName, picks, veto);
   } catch (err) {
     alert('Could not save your vote. Check your internet and try again.');
     btn.disabled = false; btn.textContent = 'Lock In My Vote 🔒';
@@ -1820,6 +1983,7 @@ function startWaiting() {
   let alreadyTransitioned = false;
 
   if (state.timerEnd > 0) startCountdown();
+  if (state.deadlineEnd > 0) startDeadlineCountdown();
 
   if (state.anonymousResults) {
     document.getElementById('waiting-anon-note').style.display = 'block';
@@ -1893,35 +2057,102 @@ function stopCountdown() {
   if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
 }
 
+function stopDeadline() {
+  if (state.deadlineInterval) { clearInterval(state.deadlineInterval); state.deadlineInterval = null; }
+}
+
+function fmtRemaining(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (d > 0) return `${d}d ${h}h left`;
+  if (h > 0) return `${h}h ${m}m left`;
+  if (m > 0) return `${m}m ${sec}s left`;
+  return `${sec}s left`;
+}
+
+function startDeadlineCountdown() {
+  const el = document.getElementById('deadline-note');
+  el.style.display = 'block';
+  const when = new Date(state.deadlineEnd).toLocaleString([], {
+    weekday: 'short', hour: 'numeric', minute: '2-digit'
+  });
+
+  const tick = () => {
+    const remaining = state.deadlineEnd - Date.now();
+    if (remaining <= 0) {
+      stopDeadline();
+      el.textContent = '🕒 Deadline reached — revealing results!';
+      if (state.lastSessionData) showResults(state.lastSessionData);
+      else manualReveal();
+      return;
+    }
+    el.textContent = `🕒 Results auto-reveal ${when} · ${fmtRemaining(remaining)}`;
+  };
+  tick();
+  state.deadlineInterval = setInterval(tick, 1000);
+}
+
 // ════════════════════════════════════════════════════
 //  RESULTS SCREEN
 // ════════════════════════════════════════════════════
 function showResults(session) {
   if (state.sessionRef)   { state.sessionRef.off('value');   state.sessionRef   = null; }
   stopCountdown();
+  stopDeadline();
   document.getElementById('timer-section').style.display = 'none';
+  document.getElementById('deadline-note').style.display = 'none';
 
   const suggestions  = session.suggestions || {};
   const participants = toArray(session.participants);
 
-  // Tally
+  // Tally — normalize picks so near-duplicates merge into one option
   const tally = {};
+  const ensure = key => {
+    if (!tally[key]) tally[key] = { displays: {}, count: 0, points: 0, vetoes: 0, voters: [], vetoers: [] };
+    return tally[key];
+  };
   Object.values(suggestions).forEach(entry => {
     toArray(entry.picks).forEach((pick, i) => {
-      const key = pick.toLowerCase().trim();
-      if (!tally[key]) tally[key] = { display: pick, count: 0, points: 0 };
-      tally[key].count  += 1;
-      tally[key].points += Math.max(1, 3 - i);
+      const key = normKey(pick);
+      if (!key) return;
+      const t = ensure(key);
+      t.count  += 1;
+      t.points += Math.max(1, 3 - i);
+      const label = (pick || '').trim();
+      t.displays[label] = (t.displays[label] || 0) + 1;
+      if (entry.display) t.voters.push(entry.display);
     });
+    if (entry.veto) {
+      const vk = normKey(entry.veto);
+      if (vk) {
+        const t = ensure(vk);
+        t.vetoes += 1;
+        if (entry.display) t.vetoers.push(entry.display);
+        const label = (entry.veto || '').trim();
+        if (!t.displays[label]) t.displays[label] = 0;
+      }
+    }
   });
 
+  // Pick the most common original spelling as the display label
+  Object.values(tally).forEach(t => {
+    t.display = Object.entries(t.displays).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    t.score   = t.count - t.vetoes; // vetoes penalize popularity
+  });
+
+  // Sort: net score, then raw popularity, then preference points
   const sorted = Object.values(tally).sort((a, b) =>
+    b.score !== a.score ? b.score - a.score :
     b.count !== a.count ? b.count - a.count : b.points - a.points
   );
 
+  const maxCount = Math.max(1, ...sorted.map(s => s.count));
   const top    = sorted[0];
-  const tied   = sorted.filter(x => x.count === top?.count && x.points === top?.points);
+  const tied   = sorted.filter(x => top && x.score === top.score && x.count === top.count && x.points === top.points);
   const isTie  = tied.length > 1;
+
+  state.lastResults = { sorted, question: session.question, sessionName: state.sessionName, totalVoters: participants.length };
 
   // Session name
   const snEl = document.getElementById('results-session-name');
@@ -1930,19 +2161,32 @@ function showResults(session) {
 
   document.getElementById('results-question').textContent = session.question;
   const totalVoters = participants.length;
+  const showVoters  = !state.anonymousResults;
   const list = document.getElementById('results-list');
   list.innerHTML = '';
 
   sorted.forEach((item, i) => {
     const medal  = ['🥇','🥈','🥉'][i] ?? `${i + 1}.`;
-    const barPct = Math.round((item.count / top.count) * 100);
+    const barPct = Math.round((item.count / maxCount) * 100);
+    const vetoOut = item.vetoes > 0 && item.score < (top ? top.score : 0);
     const card   = document.createElement('div');
-    card.className = 'result-card' + (i === 0 ? ' winner' : '');
+    card.className = 'result-card' + (i === 0 ? ' winner' : '') + (vetoOut ? ' vetoed-out' : '');
+
+    const vetoBadge = item.vetoes > 0
+      ? ` · <span class="result-veto">🚫 ${item.vetoes} veto${item.vetoes === 1 ? '' : 's'}</span>` : '';
+
+    const breakdownLines = [];
+    if (showVoters && item.voters.length)
+      breakdownLines.push(`<span class="bd-label">Picked by:</span> ${esc(item.voters.join(', '))}`);
+    if (showVoters && item.vetoers.length)
+      breakdownLines.push(`<span class="bd-label" style="color:var(--pink)">Vetoed by:</span> ${esc(item.vetoers.join(', '))}`);
+
     card.innerHTML = `
       <div class="result-medal">${medal}</div>
       <div class="result-info">
-        <div class="result-name">${item.display}</div>
-        <div class="result-sub">${item.count} of ${totalVoters} ${item.count === 1 ? 'person' : 'people'} picked this</div>
+        <div class="result-name">${esc(item.display)}</div>
+        <div class="result-sub">${item.count} of ${totalVoters} ${item.count === 1 ? 'person' : 'people'} picked this · ${item.points} pts${vetoBadge}</div>
+        <div class="breakdown-voters">${breakdownLines.join('<br>')}</div>
       </div>
       <div class="bar-wrap">
         <div class="bar-track"><div class="bar-fill"></div></div>
@@ -1950,6 +2194,16 @@ function showResults(session) {
     list.appendChild(card);
     setTimeout(() => { card.querySelector('.bar-fill').style.width = barPct + '%'; }, 120 + i * 130);
   });
+
+  // Reset the "who picked what" toggle for this render
+  const bdBtn = document.getElementById('breakdown-btn');
+  bdBtn.style.display = showVoters ? '' : 'none';
+  bdBtn.textContent = '👥 Who Picked What';
+
+  const anyVetoes = sorted.some(x => x.vetoes > 0);
+  document.getElementById('scoring-note').innerHTML = anyVetoes
+    ? 'Ranked by picks minus vetoes — a vetoed option won\'t win if a clean one is supported.<br>Similar write-ins (case, spacing, emoji) are merged automatically.'
+    : 'Ranked by how many people suggested each option.<br>Ties broken by preference order — or randomly if still tied.';
 
   showScreen('screen-results');
 
@@ -2085,6 +2339,93 @@ function shareResults() {
   }).catch(() => alert('Could not copy — try manually selecting the results.'));
 }
 
+// Toggle the per-option "who picked / vetoed" breakdown
+function toggleBreakdown() {
+  const rows = [...document.querySelectorAll('.breakdown-voters')];
+  const showing = rows.some(r => r.classList.contains('visible'));
+  rows.forEach(r => r.classList.toggle('visible', !showing));
+  const btn = document.getElementById('breakdown-btn');
+  btn.textContent = showing ? '👥 Who Picked What' : '🙈 Hide Breakdown';
+}
+
+// Render the results to a PNG and download it
+function saveResultsImage() {
+  const r = state.lastResults;
+  if (!r || !r.sorted.length) { alert('No results to save yet.'); return; }
+
+  const W = 720, pad = 48, rowH = 76, headerH = 170;
+  const rows = r.sorted.slice(0, 8);
+  const H = headerH + rows.length * rowH + 70;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+
+  // Background
+  x.fillStyle = '#0d0d1f'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(168,85,247,0.4)'; x.lineWidth = 3;
+  x.strokeRect(6, 6, W - 12, H - 12);
+
+  // Title
+  x.textAlign = 'left';
+  x.fillStyle = '#a855f7';
+  x.font = '900 46px Segoe UI, system-ui, sans-serif';
+  x.fillText('NOJU', pad, 70);
+  x.fillStyle = '#6b7280';
+  x.font = '600 16px Segoe UI, system-ui, sans-serif';
+  x.fillText('NO JUDGE · GROUP VOTE', pad + 132, 66);
+
+  // Question
+  x.fillStyle = '#f0efff';
+  x.font = '700 24px Segoe UI, system-ui, sans-serif';
+  const q = (r.sessionName || r.question || '').slice(0, 60);
+  x.fillText(q, pad, 122);
+  if (r.sessionName && r.question) {
+    x.fillStyle = '#6b7280';
+    x.font = '400 16px Segoe UI, system-ui, sans-serif';
+    x.fillText(r.question.slice(0, 70), pad, 148);
+  }
+
+  const maxCount = Math.max(1, ...rows.map(s => s.count));
+  rows.forEach((item, i) => {
+    const y = headerH + i * rowH;
+    const isWin = i === 0;
+    const medal = ['🥇', '🥈', '🥉'][i] ?? `${i + 1}.`;
+    x.fillStyle = isWin ? '#22d3ee' : '#f0efff';
+    x.font = '700 26px Segoe UI, system-ui, sans-serif';
+    x.fillText(medal, pad, y + 30);
+    x.fillText((item.display || '').slice(0, 28), pad + 56, y + 30);
+
+    x.fillStyle = '#6b7280';
+    x.font = '400 15px Segoe UI, system-ui, sans-serif';
+    let sub = `${item.count} of ${r.totalVoters} picked · ${item.points} pts`;
+    if (item.vetoes > 0) sub += ` · 🚫 ${item.vetoes}`;
+    x.fillText(sub, pad + 56, y + 52);
+
+    // Bar
+    const barX = pad + 56, barY = y + 60, barW = W - barX - pad, barH = 8;
+    x.fillStyle = 'rgba(255,255,255,0.08)';
+    x.fillRect(barX, barY, barW, barH);
+    x.fillStyle = isWin ? '#22d3ee' : '#a855f7';
+    x.fillRect(barX, barY, barW * (item.count / maxCount), barH);
+  });
+
+  // Footer
+  x.fillStyle = '#6b7280';
+  x.textAlign = 'center';
+  x.font = '400 14px Segoe UI, system-ui, sans-serif';
+  x.fillText('Made with NOJU', W / 2, H - 28);
+
+  try {
+    const url = c.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `noju-results-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) {
+    alert('Could not save the image on this browser.');
+  }
+}
+
 // ════════════════════════════════════════════════════
 //  VOTE AGAIN — SAME GROUP
 // ════════════════════════════════════════════════════
@@ -2112,6 +2453,8 @@ function voteAgainSameGroup() {
   document.getElementById('setup-password').value      = state.password || '';
   document.getElementById('setup-anonymous').checked   = state.anonymousResults;
   document.getElementById('setup-min-picks').value     = state.minPicks || 1;
+  document.getElementById('setup-veto').checked        = state.allowVeto;
+  document.getElementById('setup-deadline').value      = 0;
 
   state.sessionCode = ''; state.question = ''; state.myName = ''; state.creatorName = '';
 
@@ -2252,16 +2595,19 @@ if (firebaseReady) {
     const signinBtn  = document.getElementById('home-signin-btn');
     const userBadge  = document.getElementById('home-user-badge');
     const userLabel  = document.getElementById('home-username-display');
+    const tplBtn     = document.getElementById('home-templates-btn');
     if (user) {
       const snap = await db().ref(`nhuj_users/${user.uid}/profile`).once('value');
       currentUsername = snap.val()?.username || user.email.replace('@nhuj.app', '');
       signinBtn.style.display  = 'none';
       userBadge.style.display  = 'flex';
       userLabel.textContent    = '👤 ' + currentUsername;
+      tplBtn.style.display     = '';
     } else {
       currentUsername          = '';
       signinBtn.style.display  = '';
       userBadge.style.display  = 'none';
+      tplBtn.style.display     = 'none';
     }
   });
 }
@@ -2351,6 +2697,132 @@ async function doSignUp() {
 
 function doSignOut() {
   if (firebaseReady) firebase.auth().signOut();
+}
+
+// ════════════════════════════════════════════════════
+//  SAVED TEMPLATES  (signed-in users)
+// ════════════════════════════════════════════════════
+let loadedTemplates = {};
+
+async function saveTemplate() {
+  if (!firebaseReady) { alert('Templates need Firebase configured.'); return; }
+  if (!currentUser)   { alert('Sign in first to save templates — tap 👤 Sign In on the home screen.'); showAuthOverlay(); return; }
+
+  const question = document.getElementById('setup-question').value.trim();
+  const names    = document.getElementById('setup-names').value.trim();
+  if (!question && !names) { alert('Fill in the question and names first, then save as a template.'); return; }
+
+  const defaultName = document.getElementById('setup-session-name').value.trim() || question || 'My template';
+  const tplName = prompt('Name this template:', defaultName);
+  if (tplName === null) return;
+
+  const tpl = {
+    name:         (tplName.trim() || defaultName).slice(0, 60),
+    question,
+    creatorName:  document.getElementById('setup-creator-name').value.trim(),
+    names,
+    sessionName:  document.getElementById('setup-session-name').value.trim(),
+    minPicks:     parseInt(document.getElementById('setup-min-picks').value) || 1,
+    deadlineHrs:  parseFloat(document.getElementById('setup-deadline').value) || 0,
+    allowVeto:    document.getElementById('setup-veto').checked,
+    anonymous:    document.getElementById('setup-anonymous').checked,
+    lockedOn:     document.getElementById('setup-locked-toggle').checked,
+    lockedOptions: document.getElementById('setup-locked-options').value.trim(),
+    ts: Date.now(),
+  };
+
+  const btn = document.getElementById('save-template-btn');
+  const orig = btn.textContent;
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  try {
+    await db().ref(`nhuj_users/${currentUser.uid}/templates`).push(tpl);
+    btn.textContent = '✅ Saved!';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1800);
+  } catch (e) {
+    btn.textContent = orig; btn.disabled = false;
+    alert('Could not save the template — check your connection.');
+  }
+}
+
+async function showTemplates() {
+  document.getElementById('templates-overlay').classList.add('visible');
+  const el = document.getElementById('templates-content');
+  el.innerHTML = '<p class="history-empty" style="opacity:0.5">Loading...</p>';
+
+  if (!currentUser) {
+    el.innerHTML = '<p class="history-empty">Sign in to save and reuse templates.</p>';
+    return;
+  }
+
+  let snap;
+  try { snap = await db().ref(`nhuj_users/${currentUser.uid}/templates`).once('value'); }
+  catch (e) { el.innerHTML = '<p class="history-empty">Could not load templates.</p>'; return; }
+
+  loadedTemplates = snap.val() || {};
+  const keys = Object.keys(loadedTemplates).sort((a, b) => (loadedTemplates[b].ts || 0) - (loadedTemplates[a].ts || 0));
+
+  if (!keys.length) {
+    el.innerHTML = '<p class="history-empty">No templates yet — set up a vote and tap “💾 Save as Template”.</p>';
+    return;
+  }
+
+  el.innerHTML = keys.map(k => {
+    const t = loadedTemplates[k];
+    const count = (t.names || '').split('\n').map(s => s.trim()).filter(Boolean).length;
+    return `
+      <div class="template-item">
+        <div class="t-info">
+          <div class="template-name">${esc(t.name)}</div>
+          <div class="template-sub">${esc((t.question || '').slice(0, 50))}${count ? ` · ${count} ${count === 1 ? 'person' : 'people'}` : ''}</div>
+        </div>
+        <div class="template-actions">
+          <button class="t-btn t-use" onclick="useTemplate('${k}')">Use</button>
+          <button class="t-btn t-del" onclick="deleteTemplate('${k}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function useTemplate(key) {
+  const t = loadedTemplates[key];
+  if (!t) return;
+  document.getElementById('setup-question').value      = t.question || '';
+  document.getElementById('setup-creator-name').value  = t.creatorName || '';
+  document.getElementById('setup-names').value         = t.names || '';
+  document.getElementById('setup-session-name').value  = t.sessionName || '';
+  document.getElementById('setup-password').value      = '';
+  document.getElementById('setup-min-picks').value     = t.minPicks || 1;
+  document.getElementById('setup-deadline').value      = t.deadlineHrs || 0;
+  document.getElementById('setup-veto').checked        = !!t.allowVeto;
+  document.getElementById('setup-anonymous').checked   = !!t.anonymous;
+  document.getElementById('setup-locked-toggle').checked = !!t.lockedOn;
+  document.getElementById('setup-locked-options').value = t.lockedOptions || '';
+  toggleLockedOpts('setup-locked-section');
+
+  // Open advanced settings if the template used any of them
+  if (t.sessionName || t.deadlineHrs || t.allowVeto || t.anonymous || t.lockedOn || (t.minPicks > 1)) {
+    const adv = document.getElementById('setup-adv');
+    if (adv.style.display === 'none') toggleAdv('setup-adv', document.querySelector('[onclick="toggleAdv(\'setup-adv\', this)"]'));
+  }
+
+  closeTemplates();
+  state.prevScreen = 'screen-home';
+  showScreen('screen-setup');
+  document.getElementById('setup-question').focus();
+}
+
+async function deleteTemplate(key) {
+  if (!currentUser) return;
+  if (!confirm('Delete this template?')) return;
+  try {
+    await db().ref(`nhuj_users/${currentUser.uid}/templates/${key}`).remove();
+    delete loadedTemplates[key];
+    showTemplates();
+  } catch (e) { alert('Could not delete — try again.'); }
+}
+
+function closeTemplates() {
+  document.getElementById('templates-overlay').classList.remove('visible');
 }
 
 // ════════════════════════════════════════════════════
