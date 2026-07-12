@@ -502,15 +502,9 @@
     }
     select:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(244,63,94,0.18); }
 
-    /* Results veto + breakdown */
+    /* Results veto */
     .result-veto { color: var(--pink); font-weight: 700; }
     .result-card.vetoed-out { opacity: 0.7; }
-    .breakdown-voters {
-      font-size: 0.72rem; color: var(--muted); margin-top: 5px; line-height: 1.5;
-      display: none;
-    }
-    .breakdown-voters.visible { display: block; }
-    .breakdown-voters .bd-label { color: rgba(168,85,247,0.8); }
 
     /* Deadline note (waiting screen) */
     #deadline-note {
@@ -1002,7 +996,6 @@
 
   <div class="results-actions">
     <button class="btn btn-ghost" onclick="shareResults()">📋 Copy Results</button>
-    <button class="btn btn-ghost" id="breakdown-btn" onclick="toggleBreakdown()">👥 Who Picked What</button>
     <button class="btn btn-ghost" onclick="saveResultsImage()">🖼️ Save Image</button>
     <button class="btn btn-ghost" onclick="voteAgainSameGroup()">🔁 Same Group</button>
   </div>
@@ -2161,7 +2154,6 @@ function showResults(session) {
 
   document.getElementById('results-question').textContent = session.question;
   const totalVoters = participants.length;
-  const showVoters  = !state.anonymousResults;
   const list = document.getElementById('results-list');
   list.innerHTML = '';
 
@@ -2175,18 +2167,11 @@ function showResults(session) {
     const vetoBadge = item.vetoes > 0
       ? ` · <span class="result-veto">🚫 ${item.vetoes} veto${item.vetoes === 1 ? '' : 's'}</span>` : '';
 
-    const breakdownLines = [];
-    if (showVoters && item.voters.length)
-      breakdownLines.push(`<span class="bd-label">Picked by:</span> ${esc(item.voters.join(', '))}`);
-    if (showVoters && item.vetoers.length)
-      breakdownLines.push(`<span class="bd-label" style="color:var(--pink)">Vetoed by:</span> ${esc(item.vetoers.join(', '))}`);
-
     card.innerHTML = `
       <div class="result-medal">${medal}</div>
       <div class="result-info">
         <div class="result-name">${esc(item.display)}</div>
-        <div class="result-sub">${item.count} of ${totalVoters} ${item.count === 1 ? 'person' : 'people'} picked this · ${item.points} pts${vetoBadge}</div>
-        <div class="breakdown-voters">${breakdownLines.join('<br>')}</div>
+        <div class="result-sub">${item.count} of ${totalVoters} ${item.count === 1 ? 'person' : 'people'} picked this${vetoBadge}</div>
       </div>
       <div class="bar-wrap">
         <div class="bar-track"><div class="bar-fill"></div></div>
@@ -2194,11 +2179,6 @@ function showResults(session) {
     list.appendChild(card);
     setTimeout(() => { card.querySelector('.bar-fill').style.width = barPct + '%'; }, 120 + i * 130);
   });
-
-  // Reset the "who picked what" toggle for this render
-  const bdBtn = document.getElementById('breakdown-btn');
-  bdBtn.style.display = showVoters ? '' : 'none';
-  bdBtn.textContent = '👥 Who Picked What';
 
   const anyVetoes = sorted.some(x => x.vetoes > 0);
   document.getElementById('scoring-note').innerHTML = anyVetoes
@@ -2339,15 +2319,6 @@ function shareResults() {
   }).catch(() => alert('Could not copy — try manually selecting the results.'));
 }
 
-// Toggle the per-option "who picked / vetoed" breakdown
-function toggleBreakdown() {
-  const rows = [...document.querySelectorAll('.breakdown-voters')];
-  const showing = rows.some(r => r.classList.contains('visible'));
-  rows.forEach(r => r.classList.toggle('visible', !showing));
-  const btn = document.getElementById('breakdown-btn');
-  btn.textContent = showing ? '👥 Who Picked What' : '🙈 Hide Breakdown';
-}
-
 // Render the results to a PNG and download it
 function saveResultsImage() {
   const r = state.lastResults;
@@ -2397,7 +2368,7 @@ function saveResultsImage() {
 
     x.fillStyle = '#6b7280';
     x.font = '400 15px Segoe UI, system-ui, sans-serif';
-    let sub = `${item.count} of ${r.totalVoters} picked · ${item.points} pts`;
+    let sub = `${item.count} of ${r.totalVoters} picked`;
     if (item.vetoes > 0) sub += ` · 🚫 ${item.vetoes}`;
     x.fillText(sub, pad + 56, y + 52);
 
