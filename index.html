@@ -88,6 +88,17 @@
     }
     .auth-error.visible { display: block; }
 
+    /* Password field with show/hide eye */
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 46px; }
+    .pw-eye {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; cursor: pointer;
+      font-size: 1.15rem; line-height: 1; padding: 6px; opacity: 0.75;
+      transition: opacity 0.15s;
+    }
+    .pw-eye:hover { opacity: 1; }
+
     #confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 200; display: none; }
     #floaters { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
     .floater {
@@ -625,7 +636,10 @@
       <label>Username</label>
       <input type="text" id="signin-username" placeholder="your_username" autocomplete="username" />
       <label>Password</label>
-      <input type="password" id="signin-password" placeholder="••••••••" autocomplete="current-password" />
+      <div class="pw-wrap">
+        <input type="password" id="signin-password" placeholder="••••••••" autocomplete="current-password" />
+        <button type="button" class="pw-eye" onclick="togglePw('signin-password', this)" aria-label="Show password">👁️</button>
+      </div>
       <div class="auth-error" id="signin-error"></div>
       <button class="btn btn-purple" onclick="doSignIn()">Sign In →</button>
     </div>
@@ -634,9 +648,15 @@
       <label>Choose a Username</label>
       <input type="text" id="signup-username" placeholder="3–20 chars: letters, numbers, _" maxlength="20" autocomplete="username" />
       <label>Password</label>
-      <input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password" />
+      <div class="pw-wrap">
+        <input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password" />
+        <button type="button" class="pw-eye" onclick="togglePw('signup-password', this)" aria-label="Show password">👁️</button>
+      </div>
       <label>Confirm Password</label>
-      <input type="password" id="signup-confirm" placeholder="Repeat your password" autocomplete="new-password" />
+      <div class="pw-wrap">
+        <input type="password" id="signup-confirm" placeholder="Repeat your password" autocomplete="new-password" />
+        <button type="button" class="pw-eye" onclick="togglePw('signup-confirm', this)" aria-label="Show password">👁️</button>
+      </div>
       <div class="auth-error" id="signup-error"></div>
       <button class="btn btn-cyan" onclick="doSignUp()">Create Account →</button>
     </div>
@@ -701,7 +721,7 @@
   <div class="home-footer">
     <button class="home-footer-btn" onclick="showHistory()">📜 History</button>
     <button class="home-footer-btn" id="home-templates-btn" style="display:none" onclick="showTemplates()">📁 Templates</button>
-    <button class="home-footer-btn" id="home-signin-btn" onclick="showAuthOverlay()">👤 Sign In</button>
+    <button class="home-footer-btn" id="home-signin-btn" onclick="showAuthOverlay()">👤 Sign In or Sign Up</button>
     <div id="home-user-badge" style="display:none;align-items:center;gap:4px">
       <span id="home-username-display" style="font-size:0.82rem;color:var(--purple);padding:6px 10px">👤</span>
       <button class="home-footer-btn" onclick="doSignOut()" style="font-size:0.75rem">Sign out</button>
@@ -2788,6 +2808,15 @@ function closeAuthOverlay() {
   document.getElementById('auth-overlay').classList.remove('visible');
 }
 
+// Show/hide a password field when its eye icon is tapped.
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  const show = el.type === 'password';
+  el.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁️';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
 function switchAuthTab(tab) {
   document.getElementById('auth-signin-form').style.display = tab === 'signin' ? 'block' : 'none';
   document.getElementById('auth-signup-form').style.display = tab === 'signup' ? 'block' : 'none';
@@ -2868,7 +2897,7 @@ let loadedTemplates = {};
 
 async function saveTemplate() {
   if (!firebaseReady) { alert('Templates need Firebase configured.'); return; }
-  if (!currentUser)   { alert('Sign in first to save templates — tap 👤 Sign In on the home screen.'); showAuthOverlay(); return; }
+  if (!currentUser)   { alert('Sign in first to save templates — tap 👤 Sign In or Sign Up on the home screen.'); showAuthOverlay(); return; }
 
   const question = document.getElementById('setup-question').value.trim();
   const names    = getNames('setup').join('\n');
