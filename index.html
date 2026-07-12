@@ -212,6 +212,15 @@
     }
     .btn-purple:hover    { background: var(--purple); color: var(--bg); box-shadow: 0 0 28px rgba(168,85,247,0.55); }
     .btn-purple:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+    /* Primary call-to-action — filled + glowing so it stands out */
+    .btn-cta {
+      color: #fff; border-color: transparent;
+      background: linear-gradient(135deg, var(--purple) 0%, var(--cyan) 100%);
+      font-size: 1.08rem; padding: 16px 24px; margin-top: 26px;
+      box-shadow: 0 0 26px rgba(168,85,247,0.5);
+    }
+    .btn-cta:hover    { filter: brightness(1.1); box-shadow: 0 0 38px rgba(168,85,247,0.75); }
+    .btn-cta:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
     .btn-cyan {
       color: var(--cyan); border-color: var(--cyan);
       background: rgba(34,211,238,0.05); box-shadow: 0 0 14px rgba(34,211,238,0.18);
@@ -698,28 +707,51 @@
   <div class="settings-heading">⚙️ Additional Settings</div>
   <div id="setup-adv" class="adv-section">
 
-    <label>Session Display Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional, shown to voters)</span></label>
-    <input type="text" id="setup-session-name" placeholder="e.g. Friday Night Plans" maxlength="60" />
+    <div class="check-row" style="margin-top:0">
+      <input type="checkbox" id="setup-name-toggle" onchange="toggleField('setup-name-toggle','setup-name-field')" />
+      <span onclick="document.getElementById('setup-name-toggle').click()">Give this vote a display name</span>
+    </div>
+    <div id="setup-name-field" style="display:none;margin-top:10px">
+      <input type="text" id="setup-session-name" placeholder="e.g. Friday Night Plans" maxlength="60" />
+    </div>
 
-    <label>Session Password <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional)</span></label>
-    <input type="password" id="setup-password" placeholder="Leave blank for no password" />
+    <div class="check-row">
+      <input type="checkbox" id="setup-pass-toggle" onchange="toggleField('setup-pass-toggle','setup-pass-field')" />
+      <span onclick="document.getElementById('setup-pass-toggle').click()">Require a password to join</span>
+    </div>
+    <div id="setup-pass-field" style="display:none;margin-top:10px">
+      <input type="password" id="setup-password" placeholder="Enter a password" />
+    </div>
 
-    <div class="field-row" style="margin-top:20px">
-      <div>
-        <label style="margin-top:0">Vote Timer <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(minutes, 0=off)</span></label>
-        <input type="number" id="setup-timer" value="0" min="0" max="60" placeholder="0" />
-      </div>
-      <div>
-        <label style="margin-top:0">Reveal After <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(votes, 0=all)</span></label>
-        <input type="number" id="setup-min-voters" value="0" min="0" placeholder="0" />
-      </div>
+    <div class="check-row">
+      <input type="checkbox" id="setup-timer-toggle" onchange="toggleField('setup-timer-toggle','setup-timer-field')" />
+      <span onclick="document.getElementById('setup-timer-toggle').click()">Set a vote timer</span>
+    </div>
+    <div id="setup-timer-field" style="display:none;margin-top:10px">
+      <label style="margin-top:0">Minutes to vote</label>
+      <input type="number" id="setup-timer" value="10" min="1" max="60" placeholder="e.g. 10" />
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="setup-reveal-toggle" onchange="toggleField('setup-reveal-toggle','setup-reveal-field')" />
+      <span onclick="document.getElementById('setup-reveal-toggle').click()">Reveal results early, before everyone votes</span>
+    </div>
+    <div id="setup-reveal-field" style="display:none;margin-top:10px">
+      <label style="margin-top:0">Reveal after this many votes</label>
+      <input type="number" id="setup-min-voters" value="2" min="1" placeholder="e.g. 3" />
+    </div>
+
+    <div class="check-row">
+      <input type="checkbox" id="setup-deadline-toggle" onchange="toggleField('setup-deadline-toggle','setup-deadline-field')" />
+      <span onclick="document.getElementById('setup-deadline-toggle').click()">Set an auto-reveal deadline</span>
+    </div>
+    <div id="setup-deadline-field" style="display:none;margin-top:10px">
+      <label style="margin-top:0">Hours from now <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(for async votes)</span></label>
+      <input type="number" id="setup-deadline" value="24" min="0.5" max="336" step="0.5" placeholder="e.g. 24" />
     </div>
 
     <label>Min Picks per Voter</label>
     <input type="number" id="setup-min-picks" value="1" min="1" max="10" />
-
-    <label>Auto-reveal Deadline <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(hours from now — for async votes, 0=off)</span></label>
-    <input type="number" id="setup-deadline" value="0" min="0" max="336" step="0.5" placeholder="0" />
 
     <div class="check-row" style="margin-top:18px">
       <input type="checkbox" id="setup-anonymous" />
@@ -742,7 +774,7 @@
 
   </div>
 
-  <button class="btn btn-purple" id="create-btn" onclick="createSession()">Generate Code →</button>
+  <button class="btn btn-cta" id="create-btn" onclick="createSession()">Generate Code →</button>
   <button class="btn btn-ghost" id="save-template-btn" style="margin-top:8px;font-size:0.85rem" onclick="saveTemplate()">💾 Save as Template</button>
 </div>
 
@@ -785,7 +817,7 @@
 
   </div>
 
-  <button class="btn btn-purple" id="pp-start-btn" onclick="createPassphoneSession()">Start Voting →</button>
+  <button class="btn btn-cta" id="pp-start-btn" onclick="createPassphoneSession()">Start Voting →</button>
 </div>
 
 
@@ -1259,6 +1291,18 @@ function toggleLockedOpts(sectionId) {
   document.getElementById(sectionId).style.display = checked ? 'block' : 'none';
 }
 
+// Show/hide an optional setting's input box based on its on/off toggle.
+function toggleField(toggleId, fieldId) {
+  const on = document.getElementById(toggleId).checked;
+  document.getElementById(fieldId).style.display = on ? 'block' : 'none';
+}
+
+// Set a toggle + its field together (used when restoring saved values).
+function setOptField(toggleId, fieldId, on) {
+  document.getElementById(toggleId).checked = !!on;
+  document.getElementById(fieldId).style.display = on ? 'block' : 'none';
+}
+
 // ── Name-list widget: add / edit / remove voters ──
 // `prefix` is 'setup' (Create a Vote) or 'pp' (Vote on This Device).
 function makeNameRow(prefix, value = '') {
@@ -1505,14 +1549,19 @@ async function createSession() {
   if (!question)               { alert('Please enter a question!'); return; }
   if (participants.length < 2) { alert('Please add at least 2 names! (include your own name or add others below)'); return; }
 
-  const timerMins   = parseInt(document.getElementById('setup-timer').value) || 0;
-  const minVoters   = parseInt(document.getElementById('setup-min-voters').value) || 0;
+  const timerMins   = document.getElementById('setup-timer-toggle').checked
+    ? (parseInt(document.getElementById('setup-timer').value) || 0) : 0;
+  const minVoters   = document.getElementById('setup-reveal-toggle').checked
+    ? (parseInt(document.getElementById('setup-min-voters').value) || 0) : 0;
   const minPicks    = parseInt(document.getElementById('setup-min-picks').value) || 1;
-  const deadlineHrs = parseFloat(document.getElementById('setup-deadline').value) || 0;
+  const deadlineHrs = document.getElementById('setup-deadline-toggle').checked
+    ? (parseFloat(document.getElementById('setup-deadline').value) || 0) : 0;
   const allowVeto   = document.getElementById('setup-veto').checked;
   const anonymous   = document.getElementById('setup-anonymous').checked;
-  const sessionName = document.getElementById('setup-session-name').value.trim();
-  const password    = document.getElementById('setup-password').value.trim();
+  const sessionName = document.getElementById('setup-name-toggle').checked
+    ? document.getElementById('setup-session-name').value.trim() : '';
+  const password    = document.getElementById('setup-pass-toggle').checked
+    ? document.getElementById('setup-password').value.trim() : '';
   const lockedOptsOn = document.getElementById('setup-locked-toggle').checked;
   const lockedOptions = lockedOptsOn
     ? document.getElementById('setup-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
@@ -2477,12 +2526,17 @@ function voteAgainSameGroup() {
   document.getElementById('setup-question').value      = '';
   document.getElementById('setup-creator-name').value  = '';
   renderNameRows('setup', state.participants);
+  setOptField('setup-name-toggle', 'setup-name-field', !!state.sessionName);
   document.getElementById('setup-session-name').value  = state.sessionName || '';
+  setOptField('setup-pass-toggle', 'setup-pass-field', !!state.password);
   document.getElementById('setup-password').value      = state.password || '';
   document.getElementById('setup-anonymous').checked   = state.anonymousResults;
   document.getElementById('setup-min-picks').value     = state.minPicks || 1;
   document.getElementById('setup-veto').checked        = state.allowVeto;
-  document.getElementById('setup-deadline').value      = 0;
+  setOptField('setup-timer-toggle', 'setup-timer-field', false);
+  setOptField('setup-reveal-toggle', 'setup-reveal-field', false);
+  setOptField('setup-deadline-toggle', 'setup-deadline-field', false);
+  document.getElementById('setup-deadline').value      = 24;
 
   state.sessionCode = ''; state.question = ''; state.myName = ''; state.creatorName = '';
 
@@ -2740,7 +2794,12 @@ async function saveTemplate() {
   const names    = getNames('setup').join('\n');
   if (!question && !names) { alert('Fill in the question and names first, then save as a template.'); return; }
 
-  const defaultName = document.getElementById('setup-session-name').value.trim() || question || 'My template';
+  const tplSessionName = document.getElementById('setup-name-toggle').checked
+    ? document.getElementById('setup-session-name').value.trim() : '';
+  const tplDeadline = document.getElementById('setup-deadline-toggle').checked
+    ? (parseFloat(document.getElementById('setup-deadline').value) || 0) : 0;
+
+  const defaultName = tplSessionName || question || 'My template';
   const tplName = prompt('Name this template:', defaultName);
   if (tplName === null) return;
 
@@ -2749,9 +2808,9 @@ async function saveTemplate() {
     question,
     creatorName:  document.getElementById('setup-creator-name').value.trim(),
     names,
-    sessionName:  document.getElementById('setup-session-name').value.trim(),
+    sessionName:  tplSessionName,
     minPicks:     parseInt(document.getElementById('setup-min-picks').value) || 1,
-    deadlineHrs:  parseFloat(document.getElementById('setup-deadline').value) || 0,
+    deadlineHrs:  tplDeadline,
     allowVeto:    document.getElementById('setup-veto').checked,
     anonymous:    document.getElementById('setup-anonymous').checked,
     lockedOn:     document.getElementById('setup-locked-toggle').checked,
@@ -2817,10 +2876,20 @@ function useTemplate(key) {
   document.getElementById('setup-question').value      = t.question || '';
   document.getElementById('setup-creator-name').value  = t.creatorName || '';
   renderNameRows('setup', (t.names || '').split('\n').map(s => s.trim()).filter(Boolean));
+
+  setOptField('setup-name-toggle', 'setup-name-field', !!t.sessionName);
   document.getElementById('setup-session-name').value  = t.sessionName || '';
+
+  setOptField('setup-pass-toggle', 'setup-pass-field', false);
   document.getElementById('setup-password').value      = '';
+
+  setOptField('setup-timer-toggle', 'setup-timer-field', false);
+  setOptField('setup-reveal-toggle', 'setup-reveal-field', false);
+
+  setOptField('setup-deadline-toggle', 'setup-deadline-field', (t.deadlineHrs || 0) > 0);
+  document.getElementById('setup-deadline').value      = (t.deadlineHrs || 0) > 0 ? t.deadlineHrs : 24;
+
   document.getElementById('setup-min-picks').value     = t.minPicks || 1;
-  document.getElementById('setup-deadline').value      = t.deadlineHrs || 0;
   document.getElementById('setup-veto').checked        = !!t.allowVeto;
   document.getElementById('setup-anonymous').checked   = !!t.anonymous;
   document.getElementById('setup-locked-toggle').checked = !!t.lockedOn;
