@@ -170,6 +170,33 @@
     input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
     textarea { resize: vertical; min-height: 90px; }
 
+    /* Name-list widget (add / edit / remove voters) */
+    .name-list { display: flex; flex-direction: column; gap: 8px; }
+    .name-row  { display: flex; align-items: center; gap: 8px; }
+    .name-row input { flex: 1; }
+    .name-row-btn {
+      flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+      border: 1px solid rgba(168,85,247,0.28); background: rgba(255,255,255,0.04);
+      color: var(--muted); font-size: 0.95rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.18s, border-color 0.18s, background 0.18s;
+    }
+    .name-row-btn:hover { color: var(--text); background: rgba(255,255,255,0.08); }
+    .name-row-btn.del:hover { color: var(--pink); border-color: var(--pink); }
+    .add-name-btn {
+      width: 100%; margin-top: 10px; padding: 10px 16px;
+      background: rgba(168,85,247,0.06); border: 1px dashed rgba(168,85,247,0.5);
+      border-radius: 10px; color: var(--purple); font-size: 0.9rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: background 0.18s;
+    }
+    .add-name-btn:hover { background: rgba(168,85,247,0.14); }
+
+    /* Always-visible settings section heading */
+    .settings-heading {
+      margin-top: 26px; margin-bottom: 4px; font-size: 0.95rem; font-weight: 700;
+      color: var(--text); letter-spacing: 0.02em;
+    }
+
     /* Buttons */
     .btn {
       display: block; width: 100%; padding: 13px 24px; border-radius: 12px;
@@ -222,14 +249,7 @@
     }
     .home-footer-btn:hover { color: var(--text); background: rgba(255,255,255,0.06); }
 
-    /* Advanced settings accordion */
-    .adv-toggle {
-      width: 100%; text-align: left; background: transparent;
-      border: 1px solid rgba(255,255,255,0.08); border-radius: 10px;
-      padding: 10px 14px; color: var(--muted); font-size: 0.82rem;
-      cursor: pointer; margin-top: 20px; transition: all 0.15s; font-family: inherit;
-    }
-    .adv-toggle:hover { color: var(--text); border-color: rgba(255,255,255,0.18); }
+    /* Additional settings section */
     .adv-section { padding-top: 4px; }
 
     /* Checkbox row */
@@ -671,13 +691,12 @@
   <label>Your Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional — adds you to the vote)</span></label>
   <input type="text" id="setup-creator-name" placeholder="e.g. Keya" maxlength="40" />
 
-  <label>Everyone Else Voting?
-    <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one name per line)</span>
-  </label>
-  <textarea id="setup-names" placeholder="Baba&#10;Mumma&#10;Alisha"></textarea>
+  <label>Everyone Else Voting?</label>
+  <div id="setup-names-list" class="name-list"></div>
+  <button type="button" class="add-name-btn" onclick="addNameRow('setup')">+ Add Person</button>
 
-  <button type="button" class="adv-toggle" onclick="toggleAdv('setup-adv', this)">⚙️ Advanced Settings ▾</button>
-  <div id="setup-adv" class="adv-section" style="display:none">
+  <div class="settings-heading">⚙️ Additional Settings</div>
+  <div id="setup-adv" class="adv-section">
 
     <label>Session Display Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional, shown to voters)</span></label>
     <input type="text" id="setup-session-name" placeholder="e.g. Friday Night Plans" maxlength="60" />
@@ -740,13 +759,12 @@
   <label>The Question</label>
   <input type="text" id="pp-question" placeholder="e.g. Who should pick the movie?" maxlength="120" />
 
-  <label>Who's Voting?
-    <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one name per line)</span>
-  </label>
-  <textarea id="pp-names" placeholder="Keya&#10;Baba&#10;Mumma&#10;Alisha"></textarea>
+  <label>Who's Voting?</label>
+  <div id="pp-names-list" class="name-list"></div>
+  <button type="button" class="add-name-btn" onclick="addNameRow('pp')">+ Add Person</button>
 
-  <button type="button" class="adv-toggle" onclick="toggleAdv('pp-adv', this)">⚙️ Options ▾</button>
-  <div id="pp-adv" class="adv-section" style="display:none">
+  <div class="settings-heading">⚙️ Additional Settings</div>
+  <div id="pp-adv" class="adv-section">
 
     <label>Min Picks per Voter</label>
     <input type="number" id="pp-min-picks" value="1" min="1" max="10" />
@@ -1235,17 +1253,58 @@ function goToHome() {
 // ════════════════════════════════════════════════════
 //  UI HELPERS
 // ════════════════════════════════════════════════════
-function toggleAdv(id, btn) {
-  const el = document.getElementById(id);
-  const open = el.style.display === 'none';
-  el.style.display = open ? 'block' : 'none';
-  if (btn) btn.textContent = btn.textContent.replace(open ? '▾' : '▴', open ? '▴' : '▾');
-}
-
 function toggleLockedOpts(sectionId) {
   const toggleId = sectionId === 'setup-locked-section' ? 'setup-locked-toggle' : 'pp-locked-toggle';
   const checked  = document.getElementById(toggleId).checked;
   document.getElementById(sectionId).style.display = checked ? 'block' : 'none';
+}
+
+// ── Name-list widget: add / edit / remove voters ──
+// `prefix` is 'setup' (Create a Vote) or 'pp' (Vote on This Device).
+function makeNameRow(prefix, value = '') {
+  const row = document.createElement('div');
+  row.className = 'name-row';
+  row.innerHTML = `
+    <input type="text" class="name-input" maxlength="40" placeholder="Enter a name" />
+    <button type="button" class="name-row-btn edit" title="Edit this name">✏️</button>
+    <button type="button" class="name-row-btn del"  title="Remove">✕</button>`;
+  const input = row.querySelector('.name-input');
+  input.value = value;
+  // Enter key adds another box, for fast typing
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addNameRow(prefix); }
+  });
+  // Pencil focuses the box so the name can be changed
+  row.querySelector('.edit').addEventListener('click', () => { input.focus(); input.select(); });
+  // X removes the box (but always keep at least one)
+  row.querySelector('.del').addEventListener('click', () => {
+    const list = document.getElementById(`${prefix}-names-list`);
+    row.remove();
+    if (!list.children.length) addNameRow(prefix);
+  });
+  return row;
+}
+
+function addNameRow(prefix, value = '', focus = true) {
+  const list = document.getElementById(`${prefix}-names-list`);
+  const row  = makeNameRow(prefix, value);
+  list.appendChild(row);
+  if (focus) row.querySelector('.name-input').focus();
+  return row;
+}
+
+// Rebuild the whole list from an array of names (used by templates / "same group").
+function renderNameRows(prefix, names) {
+  const list = document.getElementById(`${prefix}-names-list`);
+  list.innerHTML = '';
+  const arr = (names && names.length) ? names : [''];
+  arr.forEach(n => addNameRow(prefix, n, false));
+}
+
+// Read the current names as a clean array (trimmed, no blanks).
+function getNames(prefix) {
+  return [...document.querySelectorAll(`#${prefix}-names-list .name-input`)]
+    .map(i => i.value.trim()).filter(Boolean);
 }
 
 // ════════════════════════════════════════════════════
@@ -1329,8 +1388,7 @@ function spawnFloaters(icons) {
 // ════════════════════════════════════════════════════
 function createPassphoneSession() {
   const question     = document.getElementById('pp-question').value.trim();
-  const participants = document.getElementById('pp-names').value
-                         .split('\n').map(s => s.trim()).filter(Boolean);
+  const participants = getNames('pp');
 
   if (!question)               { alert('Please enter a question!'); return; }
   if (participants.length < 2) { alert('Please add at least 2 names!'); return; }
@@ -1438,8 +1496,7 @@ async function createSession() {
 
   const question     = document.getElementById('setup-question').value.trim();
   const creatorName  = document.getElementById('setup-creator-name').value.trim();
-  const participants = document.getElementById('setup-names').value
-                         .split('\n').map(s => s.trim()).filter(Boolean);
+  const participants = getNames('setup');
 
   if (creatorName && !participants.some(p => p.toLowerCase() === creatorName.toLowerCase())) {
     participants.unshift(creatorName);
@@ -2408,7 +2465,7 @@ function voteAgainSameGroup() {
     state.ppAllDone   = false;
     state.question    = '';
     document.getElementById('pp-question').value = '';
-    document.getElementById('pp-names').value    = state.participants.join('\n');
+    renderNameRows('pp', state.participants);
     document.getElementById('floaters').innerHTML = '';
     showScreen('screen-passphone-setup');
     document.getElementById('pp-question').focus();
@@ -2419,7 +2476,7 @@ function voteAgainSameGroup() {
   if (state.sessionRef) { state.sessionRef.off('value'); state.sessionRef = null; }
   document.getElementById('setup-question').value      = '';
   document.getElementById('setup-creator-name').value  = '';
-  document.getElementById('setup-names').value         = state.participants.join('\n');
+  renderNameRows('setup', state.participants);
   document.getElementById('setup-session-name').value  = state.sessionName || '';
   document.getElementById('setup-password').value      = state.password || '';
   document.getElementById('setup-anonymous').checked   = state.anonymousResults;
@@ -2680,7 +2737,7 @@ async function saveTemplate() {
   if (!currentUser)   { alert('Sign in first to save templates — tap 👤 Sign In on the home screen.'); showAuthOverlay(); return; }
 
   const question = document.getElementById('setup-question').value.trim();
-  const names    = document.getElementById('setup-names').value.trim();
+  const names    = getNames('setup').join('\n');
   if (!question && !names) { alert('Fill in the question and names first, then save as a template.'); return; }
 
   const defaultName = document.getElementById('setup-session-name').value.trim() || question || 'My template';
@@ -2759,7 +2816,7 @@ function useTemplate(key) {
   if (!t) return;
   document.getElementById('setup-question').value      = t.question || '';
   document.getElementById('setup-creator-name').value  = t.creatorName || '';
-  document.getElementById('setup-names').value         = t.names || '';
+  renderNameRows('setup', (t.names || '').split('\n').map(s => s.trim()).filter(Boolean));
   document.getElementById('setup-session-name').value  = t.sessionName || '';
   document.getElementById('setup-password').value      = '';
   document.getElementById('setup-min-picks').value     = t.minPicks || 1;
@@ -2769,12 +2826,6 @@ function useTemplate(key) {
   document.getElementById('setup-locked-toggle').checked = !!t.lockedOn;
   document.getElementById('setup-locked-options').value = t.lockedOptions || '';
   toggleLockedOpts('setup-locked-section');
-
-  // Open advanced settings if the template used any of them
-  if (t.sessionName || t.deadlineHrs || t.allowVeto || t.anonymous || t.lockedOn || (t.minPicks > 1)) {
-    const adv = document.getElementById('setup-adv');
-    if (adv.style.display === 'none') toggleAdv('setup-adv', document.querySelector('[onclick="toggleAdv(\'setup-adv\', this)"]'));
-  }
 
   closeTemplates();
   state.prevScreen = 'screen-home';
@@ -2817,6 +2868,9 @@ function closeTemplates() {
   const stored = localStorage.getItem('nhuj_sound');
   state.soundEnabled = stored !== '0';
   document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
+  // Start each voter list with one empty name box
+  renderNameRows('setup', []);
+  renderNameRows('pp', []);
 })();
 </script>
 </body>
