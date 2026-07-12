@@ -261,12 +261,37 @@
     /* Additional settings section */
     .adv-section { padding-top: 4px; }
 
-    /* Checkbox row */
+    /* Setting row with a sliding on/off toggle */
     .check-row {
-      display: flex; align-items: center; gap: 10px; margin-top: 18px;
+      display: flex; align-items: center; gap: 12px; margin-top: 18px;
     }
-    .check-row input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--purple); flex-shrink: 0; cursor: pointer; }
+    .check-row input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none; margin: 0;
+      position: relative; flex-shrink: 0; width: 44px; height: 24px; cursor: pointer;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 24px; transition: background 0.2s, border-color 0.2s;
+    }
+    .check-row input[type="checkbox"]::before {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #f0efff; transition: transform 0.2s;
+    }
+    .check-row input[type="checkbox"]:checked { background: var(--purple); border-color: var(--purple); }
+    .check-row input[type="checkbox"]:checked::before { transform: translateX(20px); }
+    .check-row input[type="checkbox"]:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(168,85,247,0.18); }
     .check-row span { font-size: 0.88rem; color: rgba(240,239,255,0.7); cursor: pointer; }
+
+    /* Number stepper: − [ number ] + */
+    .stepper { display: flex; align-items: stretch; gap: 8px; max-width: 190px; margin-top: 8px; }
+    .step-btn {
+      flex-shrink: 0; width: 46px; padding: 0; border-radius: 10px;
+      border: 1px solid rgba(168,85,247,0.28); background: rgba(255,255,255,0.04);
+      color: var(--purple); font-size: 1.4rem; font-weight: 700; line-height: 1;
+      cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    }
+    .step-btn:hover { background: rgba(168,85,247,0.14); border-color: var(--purple); }
+    .step-btn:active { transform: scale(0.94); }
+    .step-input { flex: 1; min-width: 0; text-align: center; font-weight: 700; }
 
     /* Two-col row for short number fields */
     .field-row { display: flex; gap: 12px; }
@@ -751,7 +776,12 @@
     </div>
 
     <label>Min Picks per Voter</label>
-    <input type="number" id="setup-min-picks" value="1" min="1" max="10" />
+    <div class="stepper">
+      <button type="button" class="step-btn" onclick="stepNumber('setup-min-picks',-1)" aria-label="Decrease">−</button>
+      <input type="text" inputmode="numeric" id="setup-min-picks" class="step-input" value="1"
+             data-min="1" data-max="10" oninput="onStepInput(this)" onblur="clampNumber(this)" />
+      <button type="button" class="step-btn" onclick="stepNumber('setup-min-picks',1)" aria-label="Increase">+</button>
+    </div>
 
     <div class="check-row" style="margin-top:18px">
       <input type="checkbox" id="setup-anonymous" />
@@ -799,7 +829,12 @@
   <div id="pp-adv" class="adv-section">
 
     <label>Min Picks per Voter</label>
-    <input type="number" id="pp-min-picks" value="1" min="1" max="10" />
+    <div class="stepper">
+      <button type="button" class="step-btn" onclick="stepNumber('pp-min-picks',-1)" aria-label="Decrease">−</button>
+      <input type="text" inputmode="numeric" id="pp-min-picks" class="step-input" value="1"
+             data-min="1" data-max="10" oninput="onStepInput(this)" onblur="clampNumber(this)" />
+      <button type="button" class="step-btn" onclick="stepNumber('pp-min-picks',1)" aria-label="Increase">+</button>
+    </div>
 
     <div class="check-row">
       <input type="checkbox" id="pp-veto" />
@@ -1301,6 +1336,28 @@ function toggleField(toggleId, fieldId) {
 function setOptField(toggleId, fieldId, on) {
   document.getElementById(toggleId).checked = !!on;
   document.getElementById(fieldId).style.display = on ? 'block' : 'none';
+}
+
+// ── Number stepper (− / type / +) ──
+function stepNumber(id, delta) {
+  const el = document.getElementById(id);
+  const min = parseInt(el.dataset.min ?? '0', 10);
+  const max = parseInt(el.dataset.max ?? '999', 10);
+  let v = parseInt(el.value, 10);
+  if (isNaN(v)) v = min;
+  el.value = Math.min(max, Math.max(min, v + delta));
+}
+// Allow only digits while typing in a stepper box.
+function onStepInput(el) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+}
+// On leaving the box, snap an empty/out-of-range value back into range.
+function clampNumber(el) {
+  const min = parseInt(el.dataset.min ?? '0', 10);
+  const max = parseInt(el.dataset.max ?? '999', 10);
+  let v = parseInt(el.value, 10);
+  if (isNaN(v)) v = min;
+  el.value = Math.min(max, Math.max(min, v));
 }
 
 // ── Name-list widget: add / edit / remove voters ──
