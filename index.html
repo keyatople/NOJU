@@ -754,7 +754,12 @@
     </div>
     <div id="setup-timer-field" style="display:none;margin-top:10px">
       <label style="margin-top:0">Minutes to vote</label>
-      <input type="number" id="setup-timer" value="10" min="1" max="60" placeholder="e.g. 10" />
+      <div class="stepper">
+        <button type="button" class="step-btn" onclick="stepNumber('setup-timer',-1)" aria-label="Decrease">−</button>
+        <input type="text" inputmode="numeric" id="setup-timer" class="step-input" value="10"
+               data-min="1" data-max="60" oninput="onStepInput(this)" onblur="clampNumber(this)" />
+        <button type="button" class="step-btn" onclick="stepNumber('setup-timer',1)" aria-label="Increase">+</button>
+      </div>
     </div>
 
     <div class="check-row">
@@ -763,7 +768,12 @@
     </div>
     <div id="setup-reveal-field" style="display:none;margin-top:10px">
       <label style="margin-top:0">Reveal after this many votes</label>
-      <input type="number" id="setup-min-voters" value="2" min="1" placeholder="e.g. 3" />
+      <div class="stepper">
+        <button type="button" class="step-btn" onclick="stepNumber('setup-min-voters',-1)" aria-label="Decrease">−</button>
+        <input type="text" inputmode="numeric" id="setup-min-voters" class="step-input" value="2"
+               data-min="1" data-max="99" oninput="onStepInput(this)" onblur="clampNumber(this)" />
+        <button type="button" class="step-btn" onclick="stepNumber('setup-min-voters',1)" aria-label="Increase">+</button>
+      </div>
     </div>
 
     <div class="check-row">
@@ -772,7 +782,12 @@
     </div>
     <div id="setup-deadline-field" style="display:none;margin-top:10px">
       <label style="margin-top:0">Hours from now <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(for async votes)</span></label>
-      <input type="number" id="setup-deadline" value="24" min="0.5" max="336" step="0.5" placeholder="e.g. 24" />
+      <div class="stepper">
+        <button type="button" class="step-btn" onclick="stepNumber('setup-deadline',-1)" aria-label="Decrease">−</button>
+        <input type="text" inputmode="numeric" id="setup-deadline" class="step-input" value="24"
+               data-min="1" data-max="336" oninput="onStepInput(this)" onblur="clampNumber(this)" />
+        <button type="button" class="step-btn" onclick="stepNumber('setup-deadline',1)" aria-label="Increase">+</button>
+      </div>
     </div>
 
     <label>Min Picks per Voter</label>
@@ -795,11 +810,12 @@
 
     <div class="check-row">
       <input type="checkbox" id="setup-locked-toggle" onchange="toggleLockedOpts('setup-locked-section')" />
-      <span onclick="document.getElementById('setup-locked-toggle').click()">Lock options — voters pick from a fixed list (no write-ins)</span>
+      <span onclick="document.getElementById('setup-locked-toggle').click()">Pre-set options — voters pick from a fixed list (no write-ins)</span>
     </div>
     <div id="setup-locked-section" style="display:none;margin-top:10px">
-      <label style="margin-top:0">Options <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line)</span></label>
-      <textarea id="setup-locked-options" placeholder="Pizza&#10;Tacos&#10;Sushi"></textarea>
+      <label style="margin-top:0">Options</label>
+      <div id="setup-opts-list" class="name-list" data-placeholder="Enter an option"></div>
+      <button type="button" class="add-name-btn" onclick="addEntryRow('setup-opts-list')">+ Add Option</button>
     </div>
 
   </div>
@@ -843,11 +859,12 @@
 
     <div class="check-row">
       <input type="checkbox" id="pp-locked-toggle" onchange="toggleLockedOpts('pp-locked-section')" />
-      <span onclick="document.getElementById('pp-locked-toggle').click()">Lock options — voters pick from a fixed list (no write-ins)</span>
+      <span onclick="document.getElementById('pp-locked-toggle').click()">Pre-set options — voters pick from a fixed list (no write-ins)</span>
     </div>
     <div id="pp-locked-section" style="display:none;margin-top:10px">
-      <label style="margin-top:0">Options <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line)</span></label>
-      <textarea id="pp-locked-options" placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+      <label style="margin-top:0">Options</label>
+      <div id="pp-opts-list" class="name-list" data-placeholder="Enter an option"></div>
+      <button type="button" class="add-name-btn" onclick="addEntryRow('pp-opts-list')">+ Add Option</button>
     </div>
 
   </div>
@@ -1360,53 +1377,59 @@ function clampNumber(el) {
   el.value = Math.min(max, Math.max(min, v));
 }
 
-// ── Name-list widget: add / edit / remove voters ──
-// `prefix` is 'setup' (Create a Vote) or 'pp' (Vote on This Device).
-function makeNameRow(prefix, value = '') {
+// ── Entry-list widget: add / edit / remove rows (voter names, preset options) ──
+// Keyed by the list container's id. Placeholder text comes from data-placeholder.
+function makeEntryRow(listId, value = '') {
+  const list = document.getElementById(listId);
+  const placeholder = list.dataset.placeholder || 'Enter a name';
   const row = document.createElement('div');
   row.className = 'name-row';
   row.innerHTML = `
-    <input type="text" class="name-input" maxlength="40" placeholder="Enter a name" />
-    <button type="button" class="name-row-btn edit" title="Edit this name">✏️</button>
+    <input type="text" class="name-input" maxlength="60" placeholder="${placeholder}" />
+    <button type="button" class="name-row-btn edit" title="Edit">✏️</button>
     <button type="button" class="name-row-btn del"  title="Remove">✕</button>`;
   const input = row.querySelector('.name-input');
   input.value = value;
   // Enter key adds another box, for fast typing
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); addNameRow(prefix); }
+    if (e.key === 'Enter') { e.preventDefault(); addEntryRow(listId); }
   });
-  // Pencil focuses the box so the name can be changed
+  // Pencil focuses the box so the value can be changed
   row.querySelector('.edit').addEventListener('click', () => { input.focus(); input.select(); });
   // X removes the box (but always keep at least one)
   row.querySelector('.del').addEventListener('click', () => {
-    const list = document.getElementById(`${prefix}-names-list`);
     row.remove();
-    if (!list.children.length) addNameRow(prefix);
+    if (!list.children.length) addEntryRow(listId);
   });
   return row;
 }
 
-function addNameRow(prefix, value = '', focus = true) {
-  const list = document.getElementById(`${prefix}-names-list`);
-  const row  = makeNameRow(prefix, value);
+function addEntryRow(listId, value = '', focus = true) {
+  const list = document.getElementById(listId);
+  const row  = makeEntryRow(listId, value);
   list.appendChild(row);
   if (focus) row.querySelector('.name-input').focus();
   return row;
 }
 
-// Rebuild the whole list from an array of names (used by templates / "same group").
-function renderNameRows(prefix, names) {
-  const list = document.getElementById(`${prefix}-names-list`);
+// Rebuild a whole list from an array of values.
+function renderEntryRows(listId, values) {
+  const list = document.getElementById(listId);
   list.innerHTML = '';
-  const arr = (names && names.length) ? names : [''];
-  arr.forEach(n => addNameRow(prefix, n, false));
+  const arr = (values && values.length) ? values : [''];
+  arr.forEach(v => addEntryRow(listId, v, false));
 }
 
-// Read the current names as a clean array (trimmed, no blanks).
-function getNames(prefix) {
-  return [...document.querySelectorAll(`#${prefix}-names-list .name-input`)]
+// Read a list's current values as a clean array (trimmed, no blanks).
+function getEntries(listId) {
+  return [...document.querySelectorAll(`#${listId} .name-input`)]
     .map(i => i.value.trim()).filter(Boolean);
 }
+
+// Thin wrappers so the participant lists can keep calling by 'setup' / 'pp' prefix.
+function addNameRow(prefix, value = '', focus = true) { return addEntryRow(`${prefix}-names-list`, value, focus); }
+function renderNameRows(prefix, names) { renderEntryRows(`${prefix}-names-list`, names); }
+function getNames(prefix) { return getEntries(`${prefix}-names-list`); }
 
 // ════════════════════════════════════════════════════
 //  FIREBASE HELPERS
@@ -1503,7 +1526,7 @@ function createPassphoneSession() {
   state.minPicks     = parseInt(document.getElementById('pp-min-picks').value) || 1;
   state.allowVeto    = document.getElementById('pp-veto').checked;
   state.lockedOptions = document.getElementById('pp-locked-toggle').checked
-    ? document.getElementById('pp-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
+    ? getEntries('pp-opts-list')
     : [];
 
   spawnFloaters(state.categoryIcons);
@@ -1621,7 +1644,7 @@ async function createSession() {
     ? document.getElementById('setup-password').value.trim() : '';
   const lockedOptsOn = document.getElementById('setup-locked-toggle').checked;
   const lockedOptions = lockedOptsOn
-    ? document.getElementById('setup-locked-options').value.split('\n').map(s => s.trim()).filter(Boolean)
+    ? getEntries('setup-opts-list')
     : [];
 
   const btn = document.getElementById('create-btn');
@@ -2871,7 +2894,7 @@ async function saveTemplate() {
     allowVeto:    document.getElementById('setup-veto').checked,
     anonymous:    document.getElementById('setup-anonymous').checked,
     lockedOn:     document.getElementById('setup-locked-toggle').checked,
-    lockedOptions: document.getElementById('setup-locked-options').value.trim(),
+    lockedOptions: getEntries('setup-opts-list').join('\n'),
     ts: Date.now(),
   };
 
@@ -2950,7 +2973,7 @@ function useTemplate(key) {
   document.getElementById('setup-veto').checked        = !!t.allowVeto;
   document.getElementById('setup-anonymous').checked   = !!t.anonymous;
   document.getElementById('setup-locked-toggle').checked = !!t.lockedOn;
-  document.getElementById('setup-locked-options').value = t.lockedOptions || '';
+  renderEntryRows('setup-opts-list', (t.lockedOptions || '').split('\n').map(s => s.trim()).filter(Boolean));
   toggleLockedOpts('setup-locked-section');
 
   closeTemplates();
@@ -2994,9 +3017,11 @@ function closeTemplates() {
   const stored = localStorage.getItem('nhuj_sound');
   state.soundEnabled = stored !== '0';
   document.getElementById('sound-toggle').textContent = state.soundEnabled ? '🔊' : '🔇';
-  // Start each voter list with one empty name box
+  // Start each voter/option list with one empty box
   renderNameRows('setup', []);
   renderNameRows('pp', []);
+  renderEntryRows('setup-opts-list', []);
+  renderEntryRows('pp-opts-list', []);
 })();
 </script>
 </body>
