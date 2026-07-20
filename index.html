@@ -87,6 +87,17 @@
       padding: 8px 12px; background: rgba(244,63,94,0.1); border-radius: 8px;
     }
     .auth-error.visible { display: block; }
+    .auth-note {
+      color: var(--green); font-size: 0.82rem; margin-top: 10px;
+      padding: 8px 12px; background: rgba(74,222,128,0.1); border-radius: 8px;
+    }
+    .auth-link {
+      display: block; width: 100%; margin-top: 12px; padding: 4px;
+      background: transparent; border: none; color: var(--cyan);
+      font-size: 0.82rem; font-family: inherit; cursor: pointer; text-align: center;
+    }
+    .auth-link:hover { text-decoration: underline; }
+    .signup-hint { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
 
     /* Password field with show/hide eye */
     .pw-wrap { position: relative; }
@@ -627,7 +638,7 @@
 <div id="auth-overlay">
   <div class="auth-box">
     <h2 style="margin-bottom:18px;color:var(--text)">👤 Account</h2>
-    <div class="auth-tabs">
+    <div class="auth-tabs" id="auth-tabs-bar">
       <button class="auth-tab active" id="tab-signin" onclick="switchAuthTab('signin')">Sign In</button>
       <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Create Account</button>
     </div>
@@ -642,11 +653,15 @@
       </div>
       <div class="auth-error" id="signin-error"></div>
       <button class="btn btn-purple" onclick="doSignIn()">Sign In →</button>
+      <button type="button" class="auth-link" onclick="switchAuthTab('forgot')">Forgot password?</button>
     </div>
 
     <div id="auth-signup-form" style="display:none">
-      <label>Choose a Username</label>
-      <input type="text" id="signup-username" placeholder="3–20 chars: letters, numbers, _" maxlength="20" autocomplete="username" />
+      <label>Username</label>
+      <input type="text" id="signup-username" placeholder="Pick a username" maxlength="20" autocomplete="username" />
+      <label>Email</label>
+      <input type="text" id="signup-email" placeholder="you@example.com" autocomplete="email" />
+      <div class="signup-hint">Used only to reset your password.</div>
       <label>Password</label>
       <div class="pw-wrap">
         <input type="password" id="signup-password" placeholder="At least 6 characters" autocomplete="new-password" />
@@ -659,6 +674,16 @@
       </div>
       <div class="auth-error" id="signup-error"></div>
       <button class="btn btn-cyan" onclick="doSignUp()">Create Account →</button>
+    </div>
+
+    <div id="auth-forgot-form" style="display:none">
+      <h2 style="font-size:1.05rem;margin-bottom:6px;color:var(--text)">Reset your password</h2>
+      <label>Username or Email</label>
+      <input type="text" id="forgot-input" placeholder="Enter your username or email" autocomplete="username" />
+      <div class="auth-error" id="forgot-error"></div>
+      <div class="auth-note" id="forgot-success" style="display:none">✅ Check your email for a reset link.</div>
+      <button class="btn btn-purple" onclick="doForgotPassword()">Send Reset Link →</button>
+      <button type="button" class="auth-link" onclick="switchAuthTab('signin')">← Back to sign in</button>
     </div>
 
     <button class="btn btn-ghost" style="margin-top:8px;font-size:0.85rem" onclick="closeAuthOverlay()">← Close</button>
@@ -737,13 +762,12 @@
     <button class="home-btn" onclick="goToHome()">🏠 Home</button>
   </div>
   <h2>Create a Vote</h2>
-  <div class="sub">You'll get a 6-digit code to share with your group.</div>
 
   <label>The Question</label>
-  <input type="text" id="setup-question" placeholder="e.g. Where should we eat tonight?" maxlength="120" />
+  <input type="text" id="setup-question" placeholder="Type your question" maxlength="120" />
 
-  <label>Your Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional — adds you to the vote)</span></label>
-  <input type="text" id="setup-creator-name" placeholder="e.g. Keya" maxlength="40" />
+  <label>Your Name <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(optional)</span></label>
+  <input type="text" id="setup-creator-name" placeholder="Your name" maxlength="40" />
 
   <label>Everyone Else Voting?</label>
   <div id="setup-names-list" class="name-list"></div>
@@ -757,7 +781,7 @@
       <span onclick="document.getElementById('setup-name-toggle').click()">Give this vote a display name</span>
     </div>
     <div id="setup-name-field" style="display:none;margin-top:10px">
-      <input type="text" id="setup-session-name" placeholder="e.g. Friday Night Plans" maxlength="60" />
+      <input type="text" id="setup-session-name" placeholder="Name this vote" maxlength="60" />
     </div>
 
     <div class="check-row">
@@ -784,7 +808,7 @@
 
     <div class="check-row">
       <input type="checkbox" id="setup-reveal-toggle" onchange="toggleField('setup-reveal-toggle','setup-reveal-field')" />
-      <span onclick="document.getElementById('setup-reveal-toggle').click()">Reveal results early, before everyone votes</span>
+      <span onclick="document.getElementById('setup-reveal-toggle').click()">Reveal results early</span>
     </div>
     <div id="setup-reveal-field" style="display:none;margin-top:10px">
       <label style="margin-top:0">Reveal after this many votes</label>
@@ -801,7 +825,7 @@
       <span onclick="document.getElementById('setup-deadline-toggle').click()">Set an auto-reveal deadline</span>
     </div>
     <div id="setup-deadline-field" style="display:none;margin-top:10px">
-      <label style="margin-top:0">Hours from now <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(for async votes)</span></label>
+      <label style="margin-top:0">Hours until auto-reveal</label>
       <div class="stepper">
         <button type="button" class="step-btn" onclick="stepNumber('setup-deadline',-1)" aria-label="Decrease">−</button>
         <input type="text" inputmode="numeric" id="setup-deadline" class="step-input" value="24"
@@ -810,7 +834,7 @@
       </div>
     </div>
 
-    <label>Min Picks per Voter</label>
+    <label>Picks required per person</label>
     <div class="stepper">
       <button type="button" class="step-btn" onclick="stepNumber('setup-min-picks',-1)" aria-label="Decrease">−</button>
       <input type="text" inputmode="numeric" id="setup-min-picks" class="step-input" value="1"
@@ -820,17 +844,17 @@
 
     <div class="check-row" style="margin-top:18px">
       <input type="checkbox" id="setup-anonymous" />
-      <span onclick="document.getElementById('setup-anonymous').click()">Anonymous — hide names on the waiting screen</span>
+      <span onclick="document.getElementById('setup-anonymous').click()">Hide voter names while waiting</span>
     </div>
 
     <div class="check-row">
       <input type="checkbox" id="setup-veto" />
-      <span onclick="document.getElementById('setup-veto').click()">Allow vetoes — each voter can block one option they can't accept</span>
+      <span onclick="document.getElementById('setup-veto').click()">Let each voter block one option</span>
     </div>
 
     <div class="check-row">
       <input type="checkbox" id="setup-locked-toggle" onchange="toggleLockedOpts('setup-locked-section')" />
-      <span onclick="document.getElementById('setup-locked-toggle').click()">Pre-set options — voters pick from a fixed list (no write-ins)</span>
+      <span onclick="document.getElementById('setup-locked-toggle').click()">Give voters a fixed list of options</span>
     </div>
     <div id="setup-locked-section" style="display:none;margin-top:10px">
       <label style="margin-top:0">Options</label>
@@ -852,10 +876,9 @@
     <button class="home-btn" onclick="goToHome()">🏠 Home</button>
   </div>
   <h2>Vote on This Device</h2>
-  <div class="sub">One phone, everyone votes in turn — fully private, no internet needed.</div>
 
   <label>The Question</label>
-  <input type="text" id="pp-question" placeholder="e.g. Who should pick the movie?" maxlength="120" />
+  <input type="text" id="pp-question" placeholder="Type your question" maxlength="120" />
 
   <label>Who's Voting?</label>
   <div id="pp-names-list" class="name-list"></div>
@@ -864,7 +887,7 @@
   <div class="settings-heading">⚙️ Additional Settings</div>
   <div id="pp-adv" class="adv-section">
 
-    <label>Min Picks per Voter</label>
+    <label>Picks required per person</label>
     <div class="stepper">
       <button type="button" class="step-btn" onclick="stepNumber('pp-min-picks',-1)" aria-label="Decrease">−</button>
       <input type="text" inputmode="numeric" id="pp-min-picks" class="step-input" value="1"
@@ -874,12 +897,12 @@
 
     <div class="check-row">
       <input type="checkbox" id="pp-veto" />
-      <span onclick="document.getElementById('pp-veto').click()">Allow vetoes — each voter can block one option they can't accept</span>
+      <span onclick="document.getElementById('pp-veto').click()">Let each voter block one option</span>
     </div>
 
     <div class="check-row">
       <input type="checkbox" id="pp-locked-toggle" onchange="toggleLockedOpts('pp-locked-section')" />
-      <span onclick="document.getElementById('pp-locked-toggle').click()">Pre-set options — voters pick from a fixed list (no write-ins)</span>
+      <span onclick="document.getElementById('pp-locked-toggle').click()">Give voters a fixed list of options</span>
     </div>
     <div id="pp-locked-section" style="display:none;margin-top:10px">
       <label style="margin-top:0">Options</label>
@@ -925,8 +948,7 @@
     <button class="back-btn" onclick="leaveJoinScreen()">← Back</button>
     <button class="home-btn" onclick="goToHome()">🏠 Home</button>
   </div>
-  <h2>Enter the Code</h2>
-  <div class="sub">Type the 6-digit code from your host.</div>
+  <h2>Enter the 6-Digit Code</h2>
 
   <div class="code-input-row" id="join-code-row">
     <input class="code-box" type="text" maxlength="1" inputmode="numeric" autocomplete="off" />
@@ -1014,7 +1036,7 @@
 
   <!-- Tie-breaker re-vote -->
   <div id="tie-opts-section" style="display:none">
-    <div class="tip">👆 It's a tie-breaker! Pick one of the two options below.</div>
+    <div class="tip">Tie-breaker — pick one option below.</div>
     <div id="tie-opts-grid" style="margin-top:12px"></div>
   </div>
 
@@ -1027,16 +1049,10 @@
 
   <!-- Free write-in -->
   <div id="free-vote-section">
-    <div class="tip">
-      ✏️ Type your picks below.
-      <strong>First line = your top choice.</strong>
-      Add more if you want — it's all optional after the first.
-    </div>
-    <label>Your Picks
-      <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.5">(one per line, most wanted first)</span>
-    </label>
+    <div class="tip"><strong>First line = your top pick.</strong> Extra lines are optional.</div>
+    <label>Your Picks</label>
     <textarea id="suggest-input"
-              placeholder="Pizza&#10;Sushi (optional)&#10;Tacos (optional)"
+              placeholder="Your top pick&#10;Another (optional)"
               oninput="onSuggestType()"></textarea>
   </div>
 
@@ -1045,7 +1061,7 @@
     <label>🚫 Veto <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.6">(optional)</span></label>
     <input type="text" id="veto-input" placeholder="One option you can't accept..." maxlength="60" />
     <select id="veto-select" style="display:none"></select>
-    <div class="veto-hint">If enough people block an option, it won't win — even if it's popular.</div>
+    <div class="veto-hint">A blocked option can't win.</div>
   </div>
 
   <button class="btn btn-purple" id="suggest-btn" onclick="submitSuggestion()" disabled>
@@ -2818,29 +2834,43 @@ function togglePw(id, btn) {
 }
 
 function switchAuthTab(tab) {
+  const isForgot = tab === 'forgot';
   document.getElementById('auth-signin-form').style.display = tab === 'signin' ? 'block' : 'none';
   document.getElementById('auth-signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-forgot-form').style.display = isForgot ? 'block' : 'none';
+  document.getElementById('auth-tabs-bar').style.display = isForgot ? 'none' : 'flex';
   document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
   document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
   document.getElementById('signin-error').classList.remove('visible');
   document.getElementById('signup-error').classList.remove('visible');
+  document.getElementById('forgot-error').classList.remove('visible');
+  document.getElementById('forgot-success').style.display = 'none';
+}
+
+// Resolve a username (or email) to the account's login email.
+// Falls back to the old username@nhuj.app scheme for accounts made before emails were collected.
+async function resolveLoginEmail(id) {
+  if (id.includes('@')) return id;
+  const snap = await db().ref(`nhuj_usernames/${id.toLowerCase()}`).once('value');
+  return snap.val()?.email || authEmail(id);
 }
 
 async function doSignIn() {
   if (!firebaseReady) return;
-  const username = document.getElementById('signin-username').value.trim();
+  const id       = document.getElementById('signin-username').value.trim();
   const password = document.getElementById('signin-password').value;
   const errEl    = document.getElementById('signin-error');
   errEl.classList.remove('visible');
 
-  if (!username || !password) {
+  if (!id || !password) {
     errEl.textContent = 'Please fill in both fields.';
     errEl.classList.add('visible');
     return;
   }
 
   try {
-    await firebase.auth().signInWithEmailAndPassword(authEmail(username), password);
+    const email = await resolveLoginEmail(id);
+    await firebase.auth().signInWithEmailAndPassword(email, password);
     closeAuthOverlay();
   } catch (err) {
     errEl.textContent = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
@@ -2853,35 +2883,73 @@ async function doSignIn() {
 async function doSignUp() {
   if (!firebaseReady) return;
   const username = document.getElementById('signup-username').value.trim();
+  const email    = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const confirm  = document.getElementById('signup-confirm').value;
   const errEl    = document.getElementById('signup-error');
   errEl.classList.remove('visible');
 
-  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-    errEl.textContent = 'Username must be 3–20 characters: letters, numbers, and _ only.';
+  const fail = msg => { errEl.textContent = msg; errEl.classList.add('visible'); };
+
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username))       return fail('Username must be 3–20 characters: letters, numbers, and _ only.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))     return fail('Enter a valid email address.');
+  if (password.length < 6)                          return fail('Password must be at least 6 characters.');
+  if (password !== confirm)                          return fail('Passwords do not match.');
+
+  const unameKey = username.toLowerCase();
+  try {
+    const taken = await db().ref(`nhuj_usernames/${unameKey}`).once('value');
+    if (taken.exists()) return fail('That username is already taken — pick another.');
+
+    const cred = await firebase.auth().createUserWithEmailAndPassword(email, password);
+    await db().ref(`nhuj_users/${cred.user.uid}/profile`).set({ username, email });
+    await db().ref(`nhuj_usernames/${unameKey}`).set({ email, uid: cred.user.uid });
+    closeAuthOverlay();
+  } catch (err) {
+    errEl.textContent = err.code === 'auth/email-already-in-use'
+      ? 'That email already has an account — try signing in.'
+      : err.code === 'auth/invalid-email'
+      ? 'Enter a valid email address.'
+      : 'Could not create account — try again.';
     errEl.classList.add('visible');
-    return;
   }
-  if (password.length < 6) {
-    errEl.textContent = 'Password must be at least 6 characters.';
-    errEl.classList.add('visible');
-    return;
-  }
-  if (password !== confirm) {
-    errEl.textContent = 'Passwords do not match.';
+}
+
+async function doForgotPassword() {
+  if (!firebaseReady) return;
+  const input = document.getElementById('forgot-input').value.trim();
+  const errEl = document.getElementById('forgot-error');
+  const okEl  = document.getElementById('forgot-success');
+  errEl.classList.remove('visible');
+  okEl.style.display = 'none';
+
+  if (!input) {
+    errEl.textContent = 'Enter your username or email.';
     errEl.classList.add('visible');
     return;
   }
 
   try {
-    const cred = await firebase.auth().createUserWithEmailAndPassword(authEmail(username), password);
-    await db().ref(`nhuj_users/${cred.user.uid}/profile`).set({ username });
-    closeAuthOverlay();
+    let email;
+    if (input.includes('@')) {
+      email = input;
+    } else {
+      const snap = await db().ref(`nhuj_usernames/${input.toLowerCase()}`).once('value');
+      if (!snap.exists()) {
+        errEl.textContent = 'No account found with that username.';
+        errEl.classList.add('visible');
+        return;
+      }
+      email = snap.val().email;
+    }
+    await firebase.auth().sendPasswordResetEmail(email);
+    okEl.style.display = 'block';
   } catch (err) {
-    errEl.textContent = err.code === 'auth/email-already-in-use'
-      ? 'That username is already taken — pick another.'
-      : 'Could not create account — try again.';
+    errEl.textContent = err.code === 'auth/user-not-found'
+      ? 'No account found with that email.'
+      : err.code === 'auth/invalid-email'
+      ? 'Enter a valid email address.'
+      : 'Could not send the reset email — try again.';
     errEl.classList.add('visible');
   }
 }
